@@ -1,7 +1,9 @@
-function [r0, vec] = fitplane(points_cells, visualize)
+function [B] = fitplane(points_cells, visualize)
     % fit lines to the given cells of 3d points
     % Input:
     %   points_cells -- cell array of 3d point arrays of shape N x 3
+    % Output:
+    %   B -- ax + by + c = z
     if visualize
         figure
     end
@@ -28,6 +30,11 @@ function [r0, vec] = fitplane(points_cells, visualize)
     title('Masked plot');
     grid on
     
+    xlim([-400, 400])
+    ylim([-300, 500])
+    zlim([-200, 2200])
+    xlabel('x')
+    ylabel('y')
     hold off
 end
 

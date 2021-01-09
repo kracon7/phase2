@@ -1,4 +1,4 @@
-function [position] = laser_position_in_camera(img)
+function [position] = laser_position_in_camera(color, depth, visualize)
     % compute the laser point center 3d position in the camera frame 
     % Input:
     %   img -- image of the checker board and laser point
@@ -7,10 +7,18 @@ function [position] = laser_position_in_camera(img)
                     0.0   921.9954810539982    358.461790471607;
                     0.0    0.0    1.0];
     
-    T = checker_pose_in_camera(img, k_intrisic_matrix,  0);
-    pause(0.5)
-    [~, center] = filter_laser(img, 0);
-    position = ray_intersect(T, center, k_intrisic_matrix);
+    [~, center] = filter_laser(color, visualize);
+    
+    if visualize
+        imshow(depth);
+    end
+    
+     % get the laser ray vector in camera frame
+    ray = inv(k_intrisic_matrix) * [center(2), center(1), 1]';
+    
+    z = depth(floor(center(1)), floor(center(2)));
+    
+    position = double(z) * ray;
 end
 
 
