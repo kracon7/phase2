@@ -29,7 +29,7 @@ In a new terminal
 $ roslaunch realsense2_camera rs_camera.launch 
 ```
 
-In a new terminal, launch ar track module by:
+In a new terminal, launch ar track module. This is a customized launch file. The file can be found [here](https://drive.google.com/file/d/1miq6X2cE-JwfbShJRTCDqtUExPz_c5U9/view?usp=sharing)
 ```sh
 roslaunch ar_track_alvar pr2_indiv.launch marker_size:=5.55
 ```
