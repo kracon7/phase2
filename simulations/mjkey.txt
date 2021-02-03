@@ -1,0 +1,20 @@
+MuJoCo Pro Personal license activation key, number 75692, type 6.
+
+Issued to KAI WANG <wang5391@umn.edu>.
+
+Expires November 26, 2021.
+
+This file activates MuJoCo Pro on a single computer with id:
+LINUX_me5N90e34Xpv_N5SCdZFvnA819n1206
+
+Do not modify this file. Its entire content, including the
+plain text section, is used by the activation manager.
+
+a4cf2b4eec62dc57e0124584d0e8ad9afea7faf3f9eb304cbe86f88b09d2ec29
+2eac5598d6083ec149c3f181425d8daba7ebe8a5ff31e57f5101e528974047ee
+ec38d889af788908f79f4dea443fe6f8a832d014309a71ff2e88fd9673b68102
+4090c2a92ceea1d6148e8141ddd9c99eea40f05802a007eb84a372106ceabdf9
+6a8289db745fca0f8d8e87bfcc2816c5b97967527df690fd34548d7d0d368d0c
+627acceccc172340245a3e3ab715336db813bc5bf6d0503a27d53af621050ea0
+e5e844a44be7863866ebfe8164c607d30a1b8e24d05eff32841daf7a4c2ce3ad
+b4a8c7de470f25480d5e3c8ff5048750a5f1cdc804635b0c710dedc94897c8f6
