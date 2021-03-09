@@ -48,4 +48,5 @@ function [] = visualize_results(data, r0_array, vec_array, origin, x_axis, y_axi
     axis equal
     xlabel('x')
     ylabel('y')
+    hold off
 end

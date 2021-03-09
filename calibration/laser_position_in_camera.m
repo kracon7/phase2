@@ -9,10 +9,10 @@ function [position] = laser_position_in_camera(color, depth, visualize)
     
     [~, center] = filter_laser(color, visualize);
     
-    if visualize
-        imshow(depth);
-        pause(0.1)
-    end
+%     if visualize
+%         imshow(depth);
+%         pause(0.1)
+%     end
     
      % get the laser ray vector in camera frame
     ray = inv(k_intrisic_matrix) * [center(2), center(1), 1]';
