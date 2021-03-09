@@ -10,20 +10,20 @@ function [] = visualize_all(all_projected_data, semi_calibrated_data)
         y_axis = cell2mat(semi_calibrated_data(k, 5));
         z_axis = cell2mat(semi_calibrated_data(k, 6));
         
-        for i = 1:num_theta
-            points = cell2mat(all_projected_data(k, i, 2));
-            r0 = r0_array(i,:);
-            vec = vec_array(i,:);
-
-            % plot the lines and points
-            scatter3(points(:,1), points(:,2), points(:,3), 'DisplayName',num2str(thetas(i)));
-            hold on
-
-            t = [-1000:5:700];
-            y = r0 + t' * vec;
-            plot3(y(:,1), y(:,2), y(:,3));
-            hold on
-        end
+%         for i = 1:num_theta
+%             points = cell2mat(all_projected_data(k, i, 2));
+%             r0 = r0_array(i,:);
+%             vec = vec_array(i,:);
+% 
+%             % plot the lines and points
+%             scatter3(points(:,1), points(:,2), points(:,3), 'DisplayName',num2str(thetas(i)));
+%             hold on
+% 
+%             t = [-1000:5:700];
+%             y = r0 + t' * vec;
+%             plot3(y(:,1), y(:,2), y(:,3));
+%             hold on
+%         end
         
 %         legend
 
@@ -47,7 +47,7 @@ function [] = visualize_all(all_projected_data, semi_calibrated_data)
             R_cl = [x_axis', y_axis', z_axis'];
             R = R_cl * R_theta;
             z_rotated = R(:, 3);
-            quiver3(origin(1), origin(2), origin(3), scale*z_rotated(1), scale*z_rotated(2), scale*z_rotated(3), 'k')
+            quiver3(origin(1), origin(2), origin(3), scale*z_rotated(1), scale*z_rotated(2), scale*z_rotated(3), 'k', 'lineWidth', 0.5)
             hold on
         end
             
