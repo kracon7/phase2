@@ -85,8 +85,8 @@ for i = 1:num_trans
                 % store data
                 [im_h, im_w] = size(depth);
                 data(counter_trans, counter_theta, 2) = {positions};
-                data(counter_trans, counter_theta, 3) = {reshape(color_images, [], im_h, im_w, 3)};
-                data(counter_trans, counter_theta, 4) = {reshape(depth_images, [], im_h, im_w)};
+                data(counter_trans, counter_theta, 3) = {reshape(color_images, [], im_h, im_w)};
+                data(counter_trans, counter_theta, 4) = {reshape(depth_images, ounter_f, im_h, im_w)};
                 data(counter_trans, counter_theta, 5) = {all_index};
                 counter_theta = counter_theta + 1;
             end

@@ -1,4 +1,4 @@
-function [all_projected_data, semi_calibrated_data] = compute_origin(data)
+function [origin, x_axis, y_axis, z_axis] = compute_origin(data)
     % fit one line to the given 3d points using ransac
     % Input:
     %   data -- data cells of position information
@@ -9,8 +9,7 @@ function [all_projected_data, semi_calibrated_data] = compute_origin(data)
     visualize_fitplane = 0;
     visualize_fitlines = 0;
     
-    all_projected_data = cell(size(data));
-    semi_calibrated_data = cell(num_trans, 6);
+    semi_calibrated_data = cell(num_trans, 7);
     
     for i = 1:num_trans
         thetas = cell2mat(data(i, :, 1));  
@@ -37,7 +36,7 @@ function [all_projected_data, semi_calibrated_data] = compute_origin(data)
             w = [a, b, -1];
             projected = points - v * w' * w/ norm(w)^2;
 
-            projected_data(1, j, 2) = {projected};
+            projected_data(i, j, 2) = {projected};
         end
 
         [r0, vec] = fit_lines(projected_data, visualize_fitlines);
@@ -58,13 +57,14 @@ function [all_projected_data, semi_calibrated_data] = compute_origin(data)
 
         visualize_one_translation(projected_data, r0, vec, origin, x_axis, y_axis, z_axis);
         
-        all_projected_data(i, :, :) = projected_data;
-        semi_calibrated_data(i, 1) = {r0};
-        semi_calibrated_data(i, 2) = {vec};
-        semi_calibrated_data(i, 3) = {origin};
-        semi_calibrated_data(i, 4) = {x_axis};
-        semi_calibrated_data(i, 5) = {y_axis};
-        semi_calibrated_data(i, 6) = {z_axis};
+        semi projected_data];
+        all_r0 = [all_r0; r0];
+        all_vec = [all_vec; vec];
+        all_origin = [all_origin; origin];
+        all_x_axis = [all_x_axis; x_axis];
+        all_y_axis = [all_y_axis; y_axis];
+        all_z_axis = [all_z_axis; z_axis];
+    
     end
 end
 

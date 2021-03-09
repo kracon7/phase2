@@ -8,10 +8,10 @@ function [B] = fitplane(points_cells, visualize)
         figure
     end
     
-    [n_cells,~] = size(points_cells);
+    [~, n_cells] = size(points_cells);
     points = [];
     for i = 1:n_cells
-        points = [points; cell2mat(points_cells(i, 1))];
+        points = [points; cell2mat(points_cells(1, i))];
     end
     
     x=points(:,1);

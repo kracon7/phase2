@@ -11,6 +11,7 @@ function [position] = laser_position_in_camera(color, depth, visualize)
     
     if visualize
         imshow(depth);
+        pause(0.1)
     end
     
      % get the laser ray vector in camera frame
@@ -18,7 +19,7 @@ function [position] = laser_position_in_camera(color, depth, visualize)
     
     z = depth(floor(center(1)), floor(center(2)));
     
-    position = double(z) * ray;
+    position = double(z) * ray';
 end
 
 
