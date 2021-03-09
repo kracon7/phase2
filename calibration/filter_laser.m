@@ -8,8 +8,17 @@ function [I, center] = filter_laser( I1, visualize)
     end
     
     % rgb filter
-    filter_low = [187, 20, 110];
-    filter_high = [256, 145, 256];
+    % 250, 192, 35
+    % 227, 106, 70
+    % 226, 113, 87
+    % 233, 101, 16
+    % 253, 142, 16
+    % 220, 104, 62
+    % 238, 106, 49
+    % 253, 127, 38
+    % 233, 103, 52
+    filter_low = [220, 100, 10];
+    filter_high = [256, 195, 90];
     
     I = zeros(m, n);
     pixels = [];
