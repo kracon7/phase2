@@ -31,11 +31,11 @@ function [] = visualize_all(all_projected_data, semi_calibrated_data)
         hold on
 
         scale = 200;
-        quiver3(origin(1), origin(2), origin(3), scale*x_axis(1), scale*x_axis(2), scale*x_axis(3), 'r', 'lineWidth', 1)
+        quiver3(origin(1), origin(2), origin(3), scale*x_axis(1), scale*x_axis(2), scale*x_axis(3), 'r', 'lineWidth', 2)
         hold on
-        quiver3(origin(1), origin(2), origin(3), scale*y_axis(1), scale*y_axis(2), scale*y_axis(3), 'g', 'lineWidth', 1)
+        quiver3(origin(1), origin(2), origin(3), scale*y_axis(1), scale*y_axis(2), scale*y_axis(3), 'g', 'lineWidth', 2)
         hold on
-        quiver3(origin(1), origin(2), origin(3), scale*z_axis(1), scale*z_axis(2), scale*z_axis(3), 'b', 'lineWidth', 1)
+        quiver3(origin(1), origin(2), origin(3), scale*z_axis(1), scale*z_axis(2), scale*z_axis(3), 'b', 'lineWidth', 2)
         hold on
     
 

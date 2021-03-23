@@ -41,10 +41,10 @@ function [] = visualize_results(data, r0_array, vec_array, origin, x_axis, y_axi
          hold on
      end
     
-%     
-%     xlim([-400, 400])
-%     ylim([-400, 600])
-%     zlim([-700, 2200])
+
+    xlim([-400, 400])
+    ylim([-400, 600])
+    zlim([-700, 2200])
     axis equal
     xlabel('x')
     ylabel('y')
