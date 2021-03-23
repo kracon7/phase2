@@ -7,7 +7,7 @@ function [] = visualize_results(data, r0_array, vec_array, origin, x_axis, y_axi
         vec = vec_array(i,:);
         
         % plot the lines and points
-        scatter3(points(:,1), points(:,2), points(:,3), 'DisplayName',num2str(thetas(i)));
+        scatter3(points(:,1), points(:,2), points(:,3), 'DisplayName',num2str(thetas(i)), 'lineWidth', 3);
         hold on
 
         t = [-1500:5:1000];
@@ -22,11 +22,11 @@ function [] = visualize_results(data, r0_array, vec_array, origin, x_axis, y_axi
     hold on
     
     scale = 200;
-    quiver3(origin(1), origin(2), origin(3), scale*x_axis(1), scale*x_axis(2), scale*x_axis(3), 'r', 'lineWidth', 2)
+    quiver3(origin(1), origin(2), origin(3), scale*x_axis(1), scale*x_axis(2), scale*x_axis(3), 'r', 'lineWidth', 3)
     hold on
-    quiver3(origin(1), origin(2), origin(3), scale*y_axis(1), scale*y_axis(2), scale*y_axis(3), 'g', 'lineWidth', 2)
+    quiver3(origin(1), origin(2), origin(3), scale*y_axis(1), scale*y_axis(2), scale*y_axis(3), 'g', 'lineWidth', 3)
     hold on
-    quiver3(origin(1), origin(2), origin(3), scale*z_axis(1), scale*z_axis(2), scale*z_axis(3), 'b', 'lineWidth', 2)
+    quiver3(origin(1), origin(2), origin(3), scale*z_axis(1), scale*z_axis(2), scale*z_axis(3), 'b', 'lineWidth', 3)
     hold on
     
     % plot lines of different theta angles
