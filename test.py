@@ -3,7 +3,7 @@ from sympy import *
 
 
 def func(target):
-	e1 = np.array([-0.0269, 0.7183, 0.6952])
+	e1 = np.array([0.0269, -0.7183, -0.6952])
 	vx = np.array([-0.8163, -0.4171, 0.3995])
 	c = np.cross(e1, vx)
 	d = e1 @ vx
@@ -12,8 +12,10 @@ def func(target):
 	V = target - origin
 
 	theta = symbols('theta')
-	expr = (vx @ V) * cos(theta) + (c @ V) * sin(theta) + (d * e1 @ V) * (1-cos(theta))
-	e1 = Eq(expr, 59.7)
+	expr_1 = vx * cos(theta) + c * sin(theta) + d * e1 * (1-cos(theta))
+
+	expr_2 = expr_1 @ V
+	e1 = Eq(expr_2, 59.7)
 	result = solve(e1, theta)
 
 	print(result)

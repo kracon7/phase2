@@ -30,6 +30,7 @@ z_axis = cell2mat(semi_calibrated_data(:, 6));
 r1_origin = find_origin_from_lines(origins, origins + x_axis);
 r1_axis = find_axis_from_lines(x_axis);
 r1_axis = r1_axis / norm(r1_axis);
+r1_axis = -1 * sign(r1_axis(3)) * r1_axis;
 
 visualize_all(all_projected_data, semi_calibrated_data);
 
