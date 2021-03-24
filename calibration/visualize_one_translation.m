@@ -1,4 +1,6 @@
-function [] = visualize_results(data, r0_array, vec_array, origin, x_axis, y_axis, z_axis)
+function [] = visualize_one_translation(data, r0_array, vec_array, origin, x_axis, y_axis, z_axis)
+    figure
+
     [~,n_cells,~] = size(data);
     thetas = cell2mat(data(1, :, 1));
     for i = 1:n_cells
@@ -44,7 +46,7 @@ function [] = visualize_results(data, r0_array, vec_array, origin, x_axis, y_axi
 
     xlim([-400, 400])
     ylim([-400, 600])
-    zlim([-700, 2200])
+    zlim([-300, 2000])
     axis equal
     xlabel('x')
     ylabel('y')

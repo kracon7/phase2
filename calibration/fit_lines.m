@@ -33,13 +33,15 @@ function [r0_array, vec_array] = fit_lines(data, visualize)
         end
     end
     
-    xlim([-1000, 1000])
-    ylim([-600, 1200])
-    zlim([-200, 2200])
-    xlabel('x')
-    ylabel('y')
-    legend
-    hold off
+    if visualize
+        xlim([-1000, 1000])
+        ylim([-600, 1200])
+        zlim([-200, 2200])
+        xlabel('x')
+        ylabel('y')
+        legend
+        hold off
+    end
 end
 
 

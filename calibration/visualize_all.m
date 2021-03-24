@@ -1,8 +1,13 @@
 function [] = visualize_all(all_projected_data, semi_calibrated_data)
-    [num_trans ,num_theta , ~] = size(all_projected_data);
+    % Input
+    %   all_projected_data: all points are projected to the fitted planes
+    %   semi_calibrated_data: n_rot_2 x 6 cell
+    %                           {r0} {vec} {origin} {x_axis} {y_axis} {z_axis}
     
-    for k = 1:num_trans
-        thetas = cell2mat(all_projected_data(k, :, 1));
+    [num_theta1 ,num_theta2 , ~] = size(all_projected_data);
+    
+    for k = 1:num_theta1
+        thetas = reshape(cell2mat(all_projected_data(k, :, 1)), 2, num_theta2)';  % num_theta2 x 2
         r0_array = cell2mat(semi_calibrated_data(k, 1));
         vec_array = cell2mat(semi_calibrated_data(k, 2));
         origin = cell2mat(semi_calibrated_data(k, 3));
@@ -10,7 +15,7 @@ function [] = visualize_all(all_projected_data, semi_calibrated_data)
         y_axis = cell2mat(semi_calibrated_data(k, 5));
         z_axis = cell2mat(semi_calibrated_data(k, 6));
         
-%         for i = 1:num_theta
+%         for i = 1:num_theta2
 %             points = cell2mat(all_projected_data(k, i, 2));
 %             r0 = r0_array(i,:);
 %             vec = vec_array(i,:);
@@ -40,9 +45,9 @@ function [] = visualize_all(all_projected_data, semi_calibrated_data)
     
 
         % plot lines of different theta angles
-        scale = 500;
-        for i =1:num_theta
-            theta = -thetas(i);
+        scale = 300;
+        for i =1:num_theta2
+            theta = -thetas(i, 2);
             R_theta = [1, 0, 0; 0, cosd(theta), -sind(theta); 0, sind(theta), cosd(theta)];
             R_cl = [x_axis', y_axis', z_axis'];
             R = R_cl * R_theta;
@@ -54,11 +59,11 @@ function [] = visualize_all(all_projected_data, semi_calibrated_data)
         
     end
 
-%     
+%     axis equal
 %     xlim([-400, 400])
 %     ylim([-400, 600])
 %     zlim([-700, 2200])
-    axis equal
+    
     xlabel('x')
     ylabel('y')
 end

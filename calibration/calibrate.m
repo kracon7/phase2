@@ -2,45 +2,48 @@ clear
 close all
 img_folder = '../data/';
 root_dir_list = dir(img_folder);
-[num_trans, ~] = size(root_dir_list);
+[num_theta1, ~] = size(root_dir_list);
 
 visualize = 0;
 
+n_rot_1 = 7;
+n_rot_2 = 8;
+
 % data cell structure:
 % {theta, laser position array, color images, depth images, index}
-data = cell(num_trans-2, 5, 5);
+data = cell(n_rot_1, n_rot_2, 5);
 
-counter_trans = 1;
+counter_theta1 = 1;
 
-for i = 1:num_trans
-    trans_dir_name = root_dir_list(i).name;
-    if not(strcmp(trans_dir_name, '.')) && not(strcmp(trans_dir_name, '..'))
-        fprintf('Working on data in translation dir %s\n', trans_dir_name);
+for i = 1:num_theta1
+    theta1_dir_name = root_dir_list(i).name;
+    if not(strcmp(theta1_dir_name, '.')) && not(strcmp(theta1_dir_name, '..'))
+        fprintf('Working on data in translation dir %s\n', theta1_dir_name);
         
         % list theta_dir in trans_dir
-        trans_dir_path = sprintf('%s%s', img_folder, trans_dir_name);
-        trans_dir_list = dir(trans_dir_path);
-        [num_theta, ~] = size(trans_dir_list);
+        theta1_dir_path = sprintf('%s%s', img_folder, theta1_dir_name);
+        theta1_dir_list = dir(theta1_dir_path);
+        [num_theta2, ~] = size(theta1_dir_list);
         
-        counter_theta = 1;
+        counter_theta2 = 1;
         
-        for k = 1:num_theta
-            theta_dir_name = trans_dir_list(k).name;
-            if not(strcmp(theta_dir_name, '.')) && not(strcmp(theta_dir_name, '..'))
-                fprintf('Working on data in theta dir %s\n', theta_dir_name);
+        for k = 1:num_theta2
+            theta2_dir_name = theta1_dir_list(k).name;
+            if not(strcmp(theta2_dir_name, '.')) && not(strcmp(theta2_dir_name, '..'))
+                fprintf('Working on data in theta dir %s\n', theta2_dir_name);
                 
-                % get theta
-                theta = str2double(theta_dir_name) / 7;
+                % get two rotation angles
+                theta = [str2double(theta1_dir_name) / 3, str2double(theta2_dir_name) / 7];
                 
                 % list images in theta_dir
-                theta_dir_path = sprintf('%s%s/%s', img_folder, trans_dir_name, theta_dir_name);
-                theta_dir_list = dir(theta_dir_path);
+                theta2_dir_path = sprintf('%s%s/%s', img_folder, theta1_dir_name, theta2_dir_name);
+                theta_dir_list = dir(theta2_dir_path);
                 
                 [num_points, ~] = size(theta_dir_list);
                 fprintf('Found %d files from this dir\n', num_points-2);
                 
                  % store data
-                data(counter_trans, counter_theta, 1) = {theta};
+                data(counter_theta1, counter_theta2, 1) = {theta};
 
                 positions = [];
                 color_images = [];
@@ -84,16 +87,16 @@ for i = 1:num_trans
                 end
                 % store data
                 [im_h, im_w] = size(depth);
-                data(counter_trans, counter_theta, 2) = {positions};
-                data(counter_trans, counter_theta, 3) = {reshape(color_images, [], im_h, im_w, 3)};
-                data(counter_trans, counter_theta, 4) = {reshape(depth_images, [], im_h, im_w)};
-                data(counter_trans, counter_theta, 5) = {all_index};
-                counter_theta = counter_theta + 1;
+                data(counter_theta1, counter_theta2, 2) = {positions};
+                data(counter_theta1, counter_theta2, 3) = {reshape(color_images, [], im_h, im_w, 3)};
+                data(counter_theta1, counter_theta2, 4) = {reshape(depth_images, [], im_h, im_w)};
+                data(counter_theta1, counter_theta2, 5) = {all_index};
+                counter_theta2 = counter_theta2 + 1;
             end
             
         end
         
-        counter_trans = counter_trans + 1;
+        counter_theta1 = counter_theta1 + 1;
     end
         
         

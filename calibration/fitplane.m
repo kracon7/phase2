@@ -21,21 +21,24 @@ function [B] = fitplane(points_cells, visualize)
     B = DM\z;                                               % Estimate Parameters
     [X,Y] = meshgrid(linspace(min(x),max(x),50), linspace(min(y),max(y),50));
     Z = B(1)*X + B(2)*Y + B(3)*ones(size(X));
-    plot3(x, y, z, '.')
-    hold on
-    meshc(X, Y, Z)
-    hold off
-    grid on
-    xlabel('x(mm)'); ylabel('y(mm)'); zlabel('z(mm)');
-    title('Masked plot');
-    grid on
     
-    xlim([-400, 400])
-    ylim([-300, 500])
-    zlim([-200, 2200])
-    xlabel('x')
-    ylabel('y')
-    hold off
+    if visualize
+        plot3(x, y, z, '.')
+        hold on
+        meshc(X, Y, Z)
+        hold off
+        grid on
+        xlabel('x(mm)'); ylabel('y(mm)'); zlabel('z(mm)');
+        title('Masked plot');
+        grid on
+
+        xlim([-400, 400])
+        ylim([-300, 500])
+        zlim([-200, 2200])
+        xlabel('x')
+        ylabel('y')
+        hold off
+    end
 end
 
 

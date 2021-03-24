@@ -4,16 +4,17 @@ function [all_projected_data, semi_calibrated_data] = compute_origin(data)
     %   data -- data cells of position information
     
     
-    [num_trans, num_theta, ~] = size(data);
+    [num_theta1, num_theta2, ~] = size(data);
     
     visualize_fitplane = 0;
     visualize_fitlines = 0;
     
     all_projected_data = cell(size(data));
-    semi_calibrated_data = cell(num_trans, 6);
+    semi_calibrated_data = cell(num_theta1, 6);
     
-    for i = 1:num_trans
-        thetas = cell2mat(data(i, :, 1));  
+    for i = 1:num_theta1
+        thetas = reshape(cell2mat(data(i, :, 1)), 2, num_theta2)';  
+        thetas = thetas(:, 2);
 
         % compute fitted plane parameters
         B = fitplane(data(i,:,2), visualize_fitplane);
@@ -22,12 +23,13 @@ function [all_projected_data, semi_calibrated_data] = compute_origin(data)
         c = B(3);
         % B for plane parameters -- ax + by + c = z
         x_axis = [a, b, -1];
-        x_axis = - x_axis / norm(x_axis);
+        x_axis = sign(x_axis(1)) * x_axis / norm(x_axis);
+        
 
         % project all points to the plane
         projected_data = data(i, :, :);
 
-        for j = 1:num_theta
+        for j = 1:num_theta2
             points = cell2mat(data(i, j, 2));
             Z = points(:,3);
             Y = points(:,2);
@@ -45,11 +47,11 @@ function [all_projected_data, semi_calibrated_data] = compute_origin(data)
         origin = find_origin_from_lines(r0, r0+vec);
 
         % find x axis, which is the line of theta = 0 degree
-        for j =1:num_theta
+        for j =1:num_theta2
             theta = thetas(j);
             if theta == 0
                 z_axis = - vec(j, :);
-                z_axis = z_axis / norm(z_axis);
+                z_axis = sign(z_axis(3)) * z_axis / norm(z_axis);
                 break
             end
         end
