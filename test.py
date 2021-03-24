@@ -12,7 +12,8 @@ def func(target):
 	V = target - origin
 
 	theta = symbols('theta')
-	e1 = Eq((vx @ V) * cos(theta) + (c @ V) * sin(theta) + (d * e1 @ V) * (1-cos(theta)), 59.7)
+	expr = (vx @ V) * cos(theta) + (c @ V) * sin(theta) + (d * e1 @ V) * (1-cos(theta))
+	e1 = Eq(expr, 59.7)
 	result = solve(e1, theta)
 
 	print(result)
