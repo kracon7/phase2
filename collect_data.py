@@ -78,7 +78,7 @@ def main(args):
                 color_filename = os.path.join(color_data_dir, '{}.png'.format(index))
                 plt.imsave(color_filename, color_image, vmin=0, vmax=255)
 
-                depth_filename = os.path.join(depth_data_dir, '{}.mat'.format(index))
+                depth_filename = os.path.join(depth_data_dir, '{}'.format(index))
                 np.save(depth_filename, depth_image)
 
                 if args.visualize:
