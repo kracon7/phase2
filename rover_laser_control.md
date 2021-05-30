@@ -53,4 +53,10 @@ $ export ROS_IP=192.168.0.101
 $ rosrun rr_control_input_manager ar_track_laser.py
 ```
 
+## Data collection using this setup
 
+Launch the joystick message publish ROS node and then,
+
+```
+rosrun rr_control_input_manager joystick_camera_ctrl.py
+```
