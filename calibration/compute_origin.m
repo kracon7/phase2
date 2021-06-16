@@ -1,5 +1,6 @@
 function [all_projected_data, semi_calibrated_data] = compute_origin(data)
-    % fit one line to the given 3d points using ransac
+    % first project points to a plane and then fit the lines given 3d 
+    % points, compute the origins and frame axis
     % Input:
     %   data -- data cells of position information
     
