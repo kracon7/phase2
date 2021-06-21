@@ -5,7 +5,7 @@ import open3d as o3d
 import math
 import copy
 from PIL import Image
-
+import matplotlib.pyplot as plt
 
 def draw_frame(origin, q, scale=1):
     # Input quaternion format: qx qy qz qw
@@ -77,13 +77,26 @@ def angle_calculate_pcd(cloud, mask=None, rnsc_thresh=0.02, rnsc_iter=200):
     print("Angle is", A, "degree")
     return plane_model, inliers
 
+def points2pixel(points, K):
+    '''
+    Project points back to image plane
+    Input
+        points -- 3D coordinates (m, 3)
+    Output
+        pixel_coord -- pixel coordinates for corresponding points (m, 2)
+    '''
+    ray = points / points[:, -1:]
+    pixel_coord = ray @ K.T
+    pixel_coord = pixel_coord[:, :2].astype('int')
+    return pixel_coord
 
 def main(args):
 
-    idx = 100
-    depth = np.load(os.path.join(args.load_from, 'depth_%07d.npy'%(idx)))
-    rgb = np.load(os.path.join(args.load_from, 'color_%07d.npy'%(idx))).astype('float')/255
+    img_index = 100
+    depth = np.load(os.path.join(args.load_from, 'depth_%07d.npy'%(img_index)))
+    rgb = np.load(os.path.join(args.load_from, 'color_%07d.npy'%(img_index))).astype('float')/255
 
+    im_h, im_w = depth.shape
     if depth.shape[0] == 720:
         # camera intrinsics for Realsense D455 at 720 x 1280 resolution
         K=np.array([[643.014,      0.0,  638.611],
@@ -97,9 +110,10 @@ def main(args):
 
     points = compute_point_cloud(depth, K)
 
-    mask = (points[:,2]>0.2) & (points[:,2]<0.8)
-    points = points[mask]
-    rgb = rgb.reshape(-1, 3)[mask]
+    # filter in camera z-axis
+    z_mask = (points[:,2]>0.2) & (points[:,2]<0.8)
+    points = points[z_mask]
+    rgb = rgb.reshape(-1, 3)[z_mask]
     
     pcd = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(points))
     pcd.colors = o3d.utility.Vector3dVector(rgb)
@@ -210,11 +224,21 @@ def main(args):
         o3d.visualization.draw_geometries([corn_inlier_cloud, frame_base, line_ground, line_corn])
     o3d.visualization.draw_geometries([pcd, frame_base, line_ground, line_corn])
 
+    # view segmented corns in image plane
+    fig, ax = plt.subplots(1,1)
+    corn_points = np.asarray(corn_inlier_cloud.points)
+    pixel_coord = points2pixel(corn_points, K)
+    corn_img = np.zeros((im_h, im_w, 3))
+    corn_img[pixel_coord[:,1], pixel_coord[:,0], :] = np.asarray(corn_inlier_cloud.colors)
+    ax.imshow(corn_img)
+    plt.show()
+
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Test depth filter and projection for corn images')
     parser.add_argument('--load_from', default='jiacheng/data', help='directory to load images')
+    parser.add_argument('--image_index', default=100, type=int, help='image index to load rgb and depth')
     parser.add_argument('--sementics', default=0, type=int, help='add sementics color or not')
     args = parser.parse_args()
     
