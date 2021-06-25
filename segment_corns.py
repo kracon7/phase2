@@ -96,6 +96,33 @@ def points2pixel(points, K):
     pixel_coord = np.rint(pixel_coord[:, :2]).astype('int')
     return pixel_coord
 
+
+def points2heightmap(surface_pts, heightmap_size, ws_limits=[[-0.5,0.5],[-0.4,0.25],[0.1, 0.7]]):
+
+    resol_x = (ws_limits[0][1] - ws_limits[0][0]) / heightmap_size[1]
+    resol_y = (ws_limits[1][1] - ws_limits[1][0]) / heightmap_size[0]
+
+    # Sort surface points by z value
+    sort_z_ind = np.argsort(surface_pts[:,2])
+    surface_pts = surface_pts[sort_z_ind]
+
+    # Filter out surface points outside heightmap boundaries
+    heightmap_valid_ind = (surface_pts[:,0] > ws_limits[0][0]) & (surface_pts[:,0] < ws_limits[0][1]) & \
+                          (surface_pts[:,1] > ws_limits[1][0]) & (surface_pts[:,1] < ws_limits[1][1]) & \
+                          (surface_pts[:,2] > ws_limits[2][0]) & (surface_pts[:,2] < ws_limits[2][1])
+    surface_pts = surface_pts[heightmap_valid_ind]
+
+    # Create orthographic top-down-view RGB-D heightmaps
+    depth_heightmap = np.zeros(heightmap_size)
+    heightmap_pix_x = np.floor((surface_pts[:,0] - ws_limits[0][0]) / resol_x).astype(int)
+    heightmap_pix_y = np.floor((surface_pts[:,1] - ws_limits[1][0]) / resol_y).astype(int)
+    depth_heightmap[heightmap_pix_y,heightmap_pix_x] = surface_pts[:,2]
+    z_bottom = ws_limits[2][0]
+    depth_heightmap = depth_heightmap - z_bottom
+    depth_heightmap[depth_heightmap < 0] = 0
+    # depth_heightmap[depth_heightmap == -z_bottom] = np.nan
+    return depth_heightmap
+
 def main(args):
 
     os.system('mkdir -p %s'%(args.output_dir))
@@ -181,9 +208,7 @@ def main(args):
         pixel_coord = points2pixel(corn_points, K)
         corn_img = np.zeros((im_h, im_w, 3)).astype('uint8')
         corn_img[pixel_coord[:,1], pixel_coord[:,0], :] = (255*np.asarray(corn_inlier_cloud.colors)).astype('uint8')
-        img = Image.fromarray(corn_img)
-        img.save(os.path.join(args.output_dir, 'corn_%07d.png'%(img_index)))
-
+        
         # find corn stalk positions
         peak_ind = find_stalks(pixel_coord, im_h, im_w)
         # plot rectangles
@@ -209,7 +234,9 @@ def main(args):
 
         cv2.line(img, (pix1[0], pix1[1]), (pix2[0], pix2[1]), (255, 0, 0), 2)
 
-        # cv2.imwrite(os.path.join(args.output_dir, 'corn_%07d.png'%(img_index)), img)
+        if args.stitch:
+            img = np.concatenate([img, corn_img], axis=0)
+        cv2.imwrite(os.path.join(args.output_dir, 'corn_%07d.png'%(img_index)), img)
 
 
 
@@ -219,6 +246,7 @@ if __name__ == '__main__':
     parser.add_argument('--output_dir', default='segmentation', help='directory to output segmented images')
     parser.add_argument('--sementics', default=0, type=int, help='add sementics color or not')
     parser.add_argument('--vis_pcd', default=0, type=int, help='visualize pointcloud or not')
+    parser.add_argument('--stitch', default=0, type=int, help='sticth the corn segmentation and original picture together')
     args = parser.parse_args()
     
     main(args)
