@@ -1,3 +1,6 @@
+% calibrate the images and get the 3d positions of the laser positions in
+% each pictures
+
 clear
 close all
 img_folder = '../data/';
