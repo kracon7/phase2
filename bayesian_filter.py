@@ -128,7 +128,7 @@ def main(args):
 
     os.system('mkdir -p %s'%(args.output_dir))
     flist = os.listdir(args.load_from)
-    num_images = int(len(flist) / 3)
+    num_images = len(flist)
 
     for img_index in range(num_images):
         print(img_index)
@@ -243,10 +243,8 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Test depth filter and projection for corn images')
-    parser.add_argument('--load_from', default='jiacheng/data', help='directory to load images')
-    parser.add_argument('--output_dir', default='segmentation', help='directory to output segmented images')
-    parser.add_argument('--sementics', default=0, type=int, help='add sementics color or not')
-    parser.add_argument('--vis_pcd', default=0, type=int, help='visualize pointcloud or not')
+    parser.add_argument('--load_from', default='jiacheng/data', help='directory to load segmented corn images')
+    parser.add_argument('--output_dir', default='bayesian', help='directory to output bayesian filtered results')
     parser.add_argument('--stitch', default=0, type=int, help='sticth the corn segmentation and original picture together')
     args = parser.parse_args()
     
