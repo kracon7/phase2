@@ -161,7 +161,7 @@ def main(args):
         ground_candid_ind = np.where((points[:,1]>0) & (points[:,1]<0.4))[0]
         ground_candid_cloud = pcd.select_down_sample(ground_candid_ind)
 
-        plane_ground, ind = angle_calculate_pcd(ground_candid_cloud)
+        plane_ground, ind = angle_calculate_pcd(ground_candid_cloud, rnsc_thresh=0.03)
         a1, b1, c1, d1 = plane_ground
 
         ground_inlier_ind = ground_candid_ind[np.array(ind)]
@@ -170,7 +170,7 @@ def main(args):
         ground_outlier_cloud = pcd.select_down_sample(ground_inlier_ind, invert=True)
 
         if args.vis_pcd:
-            if args.sementics:
+            if args.semantics:
                 print("Showing outliers (red) and inliers (gray): ")
                 ground_outlier_cloud.paint_uniform_color([1, 0, 0])
                 ground_inlier_cloud.paint_uniform_color([0.6, 0.3, 0])
@@ -187,7 +187,7 @@ def main(args):
         corn_outlier_cloud = corn_candid_cloud.select_down_sample(ind, invert=True)
 
         if args.vis_pcd:
-            if args.sementics:
+            if args.semantics:
                 print("Showing outliers (red) and inliers (gray): ")
                 corn_outlier_cloud.paint_uniform_color([1, 0, 0])
                 corn_inlier_cloud.paint_uniform_color([0.2, 0.8, 0.2])
@@ -198,7 +198,7 @@ def main(args):
             q0 = np.array([0., 0., 0., 1.])
             frame_base = draw_frame(np.zeros(3), q0, scale=0.2)
 
-            if args.sementics:
+            if args.semantics:
                 o3d.visualization.draw_geometries([ground_inlier_cloud, corn_inlier_cloud, corn_outlier_cloud, 
                                                     frame_base])
             else:
@@ -245,7 +245,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Test depth filter and projection for corn images')
     parser.add_argument('--load_from', default='jiacheng/data', help='directory to load images')
     parser.add_argument('--output_dir', default='segmentation', help='directory to output segmented images')
-    parser.add_argument('--sementics', default=0, type=int, help='add sementics color or not')
+    parser.add_argument('--semantics', default=0, type=int, help='add semantics color or not')
     parser.add_argument('--vis_pcd', default=0, type=int, help='visualize pointcloud or not')
     parser.add_argument('--stitch', default=0, type=int, help='sticth the corn segmentation and original picture together')
     args = parser.parse_args()

@@ -11,6 +11,7 @@ if '/opt/ros/kinetic/lib/python2.7/dist-packages' in sys.path:
 import cv2
 from PIL import Image
 import matplotlib.pyplot as plt
+from scipy.sparse import csr_matrix
 from utils.corn_utils import find_stalks
 
 
@@ -124,7 +125,7 @@ def points2heightmap(surface_pts, heightmap_size, ws_limits=[[-0.5,0.5],[-0.4,0.
     # corn_img_heightmap[corn_img_heightmap == -z_bottom] = np.nan
     return corn_img_heightmap
 
-def detect_lines(img, minLineLength=100, bin_width=16):
+def detect_lines(img, minLineLength=80, bin_width=16):
     im_h, im_w = img.shape[:2]
     img = img[int(im_h/2):im_h, 0:im_w]
 
@@ -163,7 +164,7 @@ def main(args):
     flist.sort()
     num_images = len(flist)
 
-    fig, ax = plt.subplots(2,1, sharex='col')
+    fig, ax = plt.subplots(4,1, sharex='col')
     plt.subplots_adjust(wspace=0, hspace=0)
 
     for img_index in range(num_images):
@@ -182,21 +183,46 @@ def main(args):
                         [0.0,      425.997,  243.701],
                         [0.0,          0.0,    1.0]])
 
-        bin_width = 16
+        # histogram of line detection results
+        bin_width = 8
         line_hist, bin_edges = detect_lines(corn_img, bin_width=bin_width)
 
+        hist_idx = (bin_edges[:-1] + bin_width/2).astype('int')
+
+        # histogram of occupancy 
+        mask = (corn_img[:,:,0]>0) & (corn_img[:,:,1]>0) & (corn_img[:,:,2]>0)
+        pixel_coord = np.where(mask)
+        pixel_coord = np.stack([pixel_coord[0], pixel_coord[1]]).T
+        # filter top 100 pixels
+        pixel_coord = pixel_coord[pixel_coord[:,1] > 100]
+        m = pixel_coord.shape[0]
+        count = csr_matrix((np.ones(m), (pixel_coord[:,0], pixel_coord[:,1])), shape=(im_h, im_w))
+        occupancy_hist = np.array(count.sum(axis=0)).reshape(-1)[hist_idx]
+
+        # combine two histograms
+        combined_hist = line_hist * occupancy_hist
+
+        # plot the results
         ax[1].set_ylim(0, 5)
 
         ax[0].imshow(corn_img, aspect="auto")
-        ax[1].plot(bin_edges[:-1]+bin_width/2, line_hist)
+        ax[1].plot(hist_idx, line_hist)
+        ax[2].plot(hist_idx, occupancy_hist)
+        ax[3].plot(hist_idx, combined_hist)
 
         ax[0].tick_params(bottom=False, left=False, labelbottom=False, labelleft=False)
         ax[1].tick_params(bottom=False, labelbottom=False)
+        ax[2].tick_params(bottom=False, labelbottom=False)
+        ax[3].tick_params(bottom=False, labelbottom=False)
+
+        ax[1].set_ylabel('line_hist')
+        ax[2].set_ylabel('occupancy_hist')
+        ax[3].set_ylabel('combined_hist')
 
         plt.savefig(os.path.join(args.output_dir, flist[img_index]), bbox_inches='tight')
 
-        ax[0].clear()
-        ax[1].clear()
+        for a in ax:
+            a.clear()
 
 
 if __name__ == '__main__':
