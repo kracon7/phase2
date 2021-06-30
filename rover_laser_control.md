@@ -60,3 +60,13 @@ Launch the joystick message publish ROS node and then,
 ```
 rosrun rr_control_input_manager joystick_camera_ctrl.py
 ```
+
+## Recording rosbag
+Launch realsense node
+```
+roslaunch realsense2_camera rs_camera.launch align_depth:=true linear_accel_cov:=1.0 clip_distance:=2
+```
+Record camera images as well as rover odometry
+```
+rosbag record -O my_bagfile_1.bag /camera/aligned_depth_to_color/camera_info  camera/aligned_depth_to_color/image_raw /camera/color/camera_info /camera/color/image_raw /rr_openrover_basic/odom_encoder
+```
