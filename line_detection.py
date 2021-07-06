@@ -165,6 +165,7 @@ def main(args):
     num_images = len(flist)
 
     fig, ax = plt.subplots(4,1, sharex='col')
+    fig.set_size_inches(10, 18)
     plt.subplots_adjust(wspace=0, hspace=0)
 
     for img_index in range(num_images):
