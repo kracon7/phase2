@@ -8,13 +8,15 @@ from PIL import Image
 import matplotlib.pyplot as plt
 
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import transforms
+from torch.utils.data import DataLoader
 from torch.utils.data.dataset import Dataset
 
 from model import CorridorNet
 
-class MushroomDataset(Dataset):
+class CorridorDataset(Dataset):
     def __init__(self, csv_file, stat_file, root_dir, transform=None):
         """
         Args:
@@ -50,7 +52,7 @@ class MushroomDataset(Dataset):
 
 
 plt.ion()
-ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) 
+ROOT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'corn_front_data')
 
 if __name__ == '__main__':
 
@@ -61,46 +63,51 @@ if __name__ == '__main__':
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--device', type=str, default='cuda')
     parser.add_argument('--save_path', type=str, default='resnet_result')
-    parser.add_argument('--batch_size', type=int, default=15)
+    parser.add_argument('--batch_size', type=int, default=4)
     parser.add_argument('--num_workers', type=int, default=4)
     parser.add_argument('--has_checkpoint', action='store_true', default=False)
     parser.add_argument('--epoch_checkpoint', type=int, default=0)
     args = parser.parse_args()
 
-    save_path = os.path.join(ROOT_DIR, args.save_path)
+    save_path = os.path.join(ROOT_DIR,  args.save_path)
     # Create a directory if not exist.
     if not os.path.isdir(save_path):
         os.makedirs(save_path)
 
-    dataset_dir = 'Mushrooms'
-    train_csv_path = os.path.join(dataset_dir, 'train_test_split', 'train.csv')
-    test_csv_path = os.path.join(dataset_dir, 'train_test_split', 'test.csv')
+    train_csv_path = os.path.join(ROOT_DIR, 'train.csv')
+    test_csv_path = os.path.join(ROOT_DIR, 'test.csv')
+    stat_path = os.path.join(ROOT_DIR, 'corridor_stat.pkl')
     
     pretrained_means = [0.485, 0.456, 0.406]
     pretrained_stds= [0.229, 0.224, 0.225]
 
     T = transforms.Compose([
-                               transforms.Resize(500),
-                               transforms.RandomRotation(20),
-                               transforms.RandomHorizontalFlip(0.5),
-                               transforms.RandomCrop(400, padding = 10),
                                transforms.ToTensor(),
                                transforms.Normalize(mean = pretrained_means, 
                                                     std = pretrained_stds)
                            ])
 
-    train_dataset = MushroomDataset(csv_file=train_csv_path, root_dir=ROOT_DIR, transform=T)
-    train_data_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, 
-                            num_workers=args.num_workers)
+    train_dataset = CorridorDataset(csv_file=train_csv_path, 
+                                    root_dir=ROOT_DIR,
+                                    stat_file=stat_path, 
+                                    transform=T)
+    train_data_loader = DataLoader(train_dataset, 
+                                    batch_size=args.batch_size, 
+                                    shuffle=True, 
+                                    num_workers=args.num_workers)
 
-    test_dataset = MushroomDataset(csv_file=test_csv_path, root_dir=ROOT_DIR, transform=T)
-    test_data_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True, 
-                            num_workers=args.num_workers)
+    test_dataset = CorridorDataset(csv_file=test_csv_path, 
+                                   root_dir=ROOT_DIR,
+                                   stat_file=stat_path,  
+                                   transform=T)
+    test_data_loader = DataLoader(test_dataset, 
+                                  batch_size=args.batch_size, 
+                                  shuffle=True, 
+                                  num_workers=args.num_workers)
 
-    print('training on dataset with %d classes'%(train_dataset.num_classes))
-    net = MushroomNet(train_dataset.num_classes).to(args.device)
+    net = CorridorNet().to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    criterion = nn.CrossEntropyLoss().to(args.device)
+    l1_loss = nn.L1Loss().to(args.device)
 
     # Read models from checkpoint
     fname_checkpoint = os.path.join(save_path, 'chckpt_%i.pt' % args.epoch_checkpoint)
@@ -147,7 +154,7 @@ if __name__ == '__main__':
 
             optim.zero_grad()
             pred = net(data)
-            loss = criterion(pred, label)
+            loss = l1_loss(pred, label)
             loss.backward()
 
             for param in net.parameters():
@@ -155,13 +162,11 @@ if __name__ == '__main__':
             optim.step()
 
             # update the accuracy
-            class_pred = np.argmax(pred.detach().cpu().numpy(), axis=1)
-            result = class_pred == label.detach().cpu().numpy()
-            train_stat[0] += np.sum(result)
-            train_stat[1] += result.shape[0]
+            train_stat[0] += loss.detach().item() * pred.shape[0]
+            train_stat[1] += pred.shape[0]
             # record the loss
             epoch_loss.append(loss.item())
-            print('[%6d: %6d/%6d] train loss: %f, training accuracy: %f' % \
+            print('[%6d: %6d/%6d] train loss: %f, average training loss: %f' % \
                     (epoch, i, num_batch_train, loss.item(), train_stat[0]/train_stat[1]))
 
 
@@ -175,16 +180,14 @@ if __name__ == '__main__':
             label = sample['label'].to(args.device)
 
             pred = net(data)
-            loss = criterion(pred, label)
+            loss = l1_loss(pred, label)
 
             # update the accuracy
-            class_pred = np.argmax(pred.detach().cpu().numpy(), axis=1)
-            result = class_pred == label.detach().cpu().numpy()
-            test_stat[0] += np.sum(result)
-            test_stat[1] += result.shape[0]
+            test_stat[0] += loss.detach().item() * pred.shape[0]
+            test_stat[1] += pred.shape[0]
             # record the loss
             epoch_loss.append(loss.item())
-            print('[%6d: %6d/%6d] test loss: %f, testing accuracy: %f' % \
+            print('[%6d: %6d/%6d] test loss: %f, average training loss: %f' % \
                     (epoch, i, num_batch_train, loss.item(), test_stat[0]/test_stat[1]))
 
         loss_test.append(np.average(epoch_loss))

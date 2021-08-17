@@ -104,7 +104,7 @@ def draw_corridor(img, label):
 
 
 def main(args):
-    ROOT = os.path.dirname(args.img_dir)
+    ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'corn_front_data')
     output_dir = os.path.join(ROOT, 'labeled_img')
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
@@ -125,16 +125,17 @@ def main(args):
         ratio = 0.8
         N = len(labels.keys())
 
+    print("Saving corridor labels")
     pickle.dump(labels, open(os.path.join(ROOT, 'corridor_labels.pkl'), 'wb'))
 
     count = 0
     for f in labels.keys():
         print('Working on %dth image: %s'%(count, f))
-        img = cv2.imread(os.path.join(args.img_dir, f))
+        img = cv2.imread(os.path.join(ROOT, args.img_dir, f))
         img = draw_corridor(img, labels[f])
         cv2.imwrite(os.path.join(output_dir, f), img)
 
-        data = [os.path.join(args.img_dir, f)] + labels[f]
+        data = [os.path.join('color', f)] + labels[f]
         result_csv.writerow(data)
 
         if args.split:
@@ -145,10 +146,13 @@ def main(args):
 
         count += 1
 
+    print("Saving corridor stats...")
     # standardization for the label
     labels_list = np.array([item for item in labels.values()])
     mean, std = np.mean(labels_list, axis=0), np.std(labels_list, axis=0)
     stat = {'mean': mean, 'std': std}
+    print('Mean: %.2f %.2f %.2f %.2f, \nDeviation: %.2f %.2f %.2f %.2f'%(
+            mean[0], mean[1], mean[2], mean[3], std[0], std[1], std[2], std[3]))
     pickle.dump(stat, open(os.path.join(ROOT, 'corridor_stat.pkl'), 'wb'))
 
     
@@ -157,7 +161,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='extract corn image annotation labels')
     parser.add_argument('--annotation_csv', required=True, help='annotation_csv to load bounding box info')
-    parser.add_argument('--img_dir', default='images', help='directory to load images')
+    parser.add_argument('--img_dir', default='color', help='directory to load images')
     parser.add_argument('--split', default=1, type=int, help='split into train and test set')
     args = parser.parse_args()
 
