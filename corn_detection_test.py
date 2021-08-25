@@ -9,13 +9,13 @@ import datetime as dt
 import open3d as o3d
 import matplotlib.pyplot as plt
 
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torchvision import transforms
-from torch.utils.data import DataLoader
-from torch.utils.data.dataset import Dataset
-from model import CorridorNet
+# import torch
+# import torch.nn as nn
+# import torch.nn.functional as F
+# from torchvision import transforms
+# from torch.utils.data import DataLoader
+# from torch.utils.data.dataset import Dataset
+# from model import CorridorNet
 
 np.random.seed(0)
 
@@ -57,6 +57,14 @@ def draw_frame(origin=[0,0,0], q=[0,0,0,1], scale=1):
     
     return frame_rot
 
+def display_inlier_outlier(cloud, ind):
+    inlier_cloud = cloud.select_by_index(ind)
+    outlier_cloud = cloud.select_by_index(ind, invert=True)
+
+    print("Showing outliers (red) and inliers (gray): ")
+    outlier_cloud.paint_uniform_color([1, 0, 0])
+    inlier_cloud.paint_uniform_color([0.8, 0.8, 0.8])
+    o3d.visualization.draw_geometries([inlier_cloud, outlier_cloud])
 
 
 def main(args):
@@ -64,39 +72,69 @@ def main(args):
     plt.ion()
     flist = os.listdir(args.load_from)
 
+    cam_frame = draw_frame(scale=0.3)
+    
     for i in range(10):
         try:
-            cam_frame = draw_frame(scale=0.3)
-
-            idx = np.random.randint(len(flist))
+            # idx = np.random.randint(len(flist))
+            idx = 10 * i
 
             xyzrgb = np.load(os.path.join(args.load_from, flist[idx])).reshape(-1,6)
             pcd = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(xyzrgb[:,:3]))
             pcd.colors = o3d.utility.Vector3dVector(xyzrgb[:,3:].astype('float') / 255)
+            # o3d.visualization.draw_geometries([pcd, cam_frame])
+
+            pcd = pcd.crop(o3d.geometry.AxisAlignedBoundingBox(np.array([-0.6, -0.2, 0]), 
+                                                               np.array([0.6, 0.35, 8])))
+            # o3d.visualization.draw_geometries([pcd, cam_frame])
+
+            pcd = pcd.voxel_down_sample(voxel_size=0.04)
             o3d.visualization.draw_geometries([pcd, cam_frame])
 
-            pcd = pcd.crop(o3d.geometry.AxisAlignedBoundingBox(np.array([-0.6, -0.2, 2]), 
-                                                               np.array([0.6, 0.35, 4])))
-            o3d.visualization.draw_geometries([pcd, cam_frame])
+            plane_model, inliers = pcd.segment_plane(distance_threshold=0.04,
+                                                     ransac_n=3,
+                                                     num_iterations=100)
+            y_axis = plane_model[:3]
+            if y_axis[1] < 0:
+                y_axis = - y_axis
+            # display_inlier_outlier(pcd, inliers)
+
+            # use ground points to do PCA to find z axis
+            ground_points = pcd.select_by_index(inliers)
+            _, cov = ground_points.compute_mean_and_covariance()
+            eigen_values, eigen_vectors = np.linalg.eig(cov)
+            z_axis = eigen_vectors[:,0]
+            if z_axis[2] < 0:
+                z_axis = -z_axis
+
+            x_axis = np.cross(y_axis, z_axis)
+
+            R = np.stack([x_axis, y_axis, z_axis])
+            rectified_pcd = pcd.rotate(R, center=np.array([0., 0., 0.]))
+            print(R)
+            o3d.visualization.draw_geometries([rectified_pcd, cam_frame])
+
+
 
             # cleaned_pcd, _ = pcd.remove_radius_outlier(30, 0.05)
 
             # o3d.visualization.draw_geometries([cleaned_pcd, cam_frame])
 
-            ground_candid = pcd.crop(o3d.geometry.AxisAlignedBoundingBox(np.array([-10, 0.2, -10]), 
-                                                                            np.array([ 10, 0.35, 10])))
+            # ground_candid = pcd.crop(o3d.geometry.AxisAlignedBoundingBox(np.array([-10, 0.2, -10]), 
+            #                                                                 np.array([ 10, 0.35, 10])))
 
-            o3d.visualization.draw_geometries([ground_candid, cam_frame])
+            # o3d.visualization.draw_geometries([ground_candid, cam_frame])
 
-            plane_model, inliers = ground_candid.segment_plane(distance_threshold=0.03,
-                                                               ransac_n=3,
-                                                               num_iterations=100)
+            # plane_model, inliers = ground_candid.segment_plane(distance_threshold=0.03,
+            #                                                    ransac_n=3,
+            #                                                    num_iterations=100)
 
-            b_box = pcd.get_axis_aligned_bounding_box()
-            max_bound = b_box.get_max_bound()
-            min_bound = b_box.get_min_bound()
+            # b_box = pcd.get_axis_aligned_bounding_box()
+            # # b_box = pcd.get_oriented_bounding_box()
+            # max_bound = b_box.get_max_bound()
+            # min_bound = b_box.get_min_bound()
 
-            print('max bound: ', max_bound, 'min_bound: ', min_bound)
+            # print('max: ', max_bound, 'min: ', min_bound, 'cy: ', (max_bound[0]+min_bound[0])/2)
 
     
         except RuntimeError:
