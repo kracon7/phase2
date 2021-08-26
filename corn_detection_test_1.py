@@ -116,6 +116,15 @@ def main(args):
 
             # rectify the point cloud
             R = np.stack([x_axis, y_axis, z_axis])
+
+            # a = np.array([[1,2,3]])
+            # apcd = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(a))
+            # apcd.rotate(R, center=np.array([0,0,0]))
+            # print(np.asarray(apcd.points))
+            # print(R @ a.T)
+
+
+
             corn_points = pcd.select_by_index(inliers, invert=True)
             rectified_corn = corn_points.rotate(R, center=np.array([0., 0., 0.]))
             # o3d.visualization.draw_geometries([rectified_corn, cam_frame])
