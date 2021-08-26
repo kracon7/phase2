@@ -156,8 +156,6 @@ def main(args):
     pickle.dump(stat, open(os.path.join(ROOT, 'corridor_stat.pkl'), 'wb'))
 
     
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='extract corn image annotation labels')
     parser.add_argument('--annotation_csv', required=True, help='annotation_csv to load bounding box info')
