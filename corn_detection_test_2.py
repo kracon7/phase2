@@ -130,8 +130,8 @@ def main(args):
             bins = np.linspace(-0.6, 0.6, 61)
             hist, _ = np.histogram(rectified_x, bins)
             hist[hist<20] = 0
-            ptx = bins[np.nonzero(hist)[0][0]] - 0.1
-            pt = R.T @ np.array([ptx, -plane_model[3], 0])
+            ptx = bins[np.nonzero(hist)[0][0]]
+            pt = R.T @ np.array([ptx, -plane_model[3], -0.1])
 
             pickle.dump([pt, -y_axis, z_axis], 
                         open(os.path.join(args.load_from, 'plane', flist[idx].split('.')[0]+'.pkl'), 'wb'))

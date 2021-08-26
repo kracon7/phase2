@@ -36,16 +36,13 @@ def draw_corridor(img, label, color=(255,0,0)):
 
     return img
 
-def draw_side_plane(img, pt_side, vx_side, vy_side, color=(255,255,0)):
+def draw_side_plane(img, K, pt_side, vx_side, vy_side, color=(255,255,0)):
     bottom_center = pt_side - (pt_side[0])/(vx_side[0]) * vx_side
     bottom_right = bottom_center + 0.2 * vx_side
     bottom_left = bottom_center - 0.2 * vx_side
     top_right = bottom_right - 0.2 * vy_side
     top_left = bottom_left - 0.2 * vy_side
     
-    K = np.array([[615.311279296875,   0.0,             430.1778869628906],
-              [  0.0,            615.4699096679688, 240.68307495117188],
-              [  0.0,              0.0,               1.0]])
     
     bottom = np.linspace(bottom_left, bottom_right, 6)
     top = np.linspace(top_left, top_right, 6)
@@ -76,6 +73,11 @@ def draw_side_plane(img, pt_side, vx_side, vy_side, color=(255,255,0)):
     
     return drawn_img
 
+
+K = np.array([[615.311279296875,   0.0,             430.1778869628906],
+              [  0.0,            615.4699096679688, 240.68307495117188],
+              [  0.0,              0.0,               1.0]])
+
 front_dir = '/home/jc/tmp/front_rgbd'
 side_dir = '/home/jc/tmp/side'
 plane_dir = '/home/jc/tmp/plane'
@@ -86,13 +88,30 @@ front_imgs.sort()
 
 for i in range(len(front_imgs)):
     print(i)
-    front = np.load(os.path.join(front_dir, front_imgs[i]))[:,:,3:]
+    front = np.load(os.path.join(front_dir, front_imgs[i]))[:,:,3:].astype('uint8')
     side = np.load(os.path.join(side_dir, front_imgs[i]))
     plane = pickle.load(open(os.path.join(plane_dir, front_imgs[i].split('.')[0]+'.pkl'), 'rb'))
     pt, vy, vz = plane
-    pt_side = np.array([pt[2]+0.003858, pt[1]-0.09906, -pt[0]+0.11184])
-    vy_side = -vy
-    vx_side = np.array([vz[2], vz[1], -vz[0]])
-    drawn_side = draw_side_plane(side, pt_side, vx_side, vy_side)
+
+    # pt[2] -
+
+    # draw vanishing point and corn line
+    vpz = K @ (vz / vz[2])
+    vpz = vpz[:2].astype('int')
+
+    pixel_pt = K @ (pt+vz)
+    pixel_pt = (pixel_pt / pixel_pt[2]).astype('int')
+    drawn_front = cv2.line(front, (pixel_pt[0], pixel_pt[1]), (vpz[0], vpz[1]), (255,255,0), 3)
+
+    T = np.array([[ 0, 0, 1, 0.03858],
+                  [ 0, 1, 0, -0.099],
+                  [-1, 0, 0, 0.11184],
+                  [ 0, 0, 0,  1]])
+    pt_side = T[:3,:3] @ pt + T[:3,3]
+    vy_side = - T[:3,:3] @ vy
+    vx_side = T[:3,:3] @ vz
+    drawn_side = draw_side_plane(side, K, pt_side, vx_side, vy_side)
+
+    img = np.concatenate([drawn_front, drawn_side], axis=0)
     
-    cv2.imwrite(os.path.join(drawn_dir, front_imgs[i].split('.')[0]+'.png'), drawn_side)
+    cv2.imwrite(os.path.join(drawn_dir, front_imgs[i].split('.')[0]+'.png'), img)
