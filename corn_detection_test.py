@@ -71,13 +71,18 @@ def main(args):
     
     plt.ion()
     flist = os.listdir(args.load_from)
+    flist.sort()
+    output_dir = os.path.join(os.path.dirname(args.load_from), 'front_rectified')
 
     cam_frame = draw_frame(scale=0.3)
+
+    fig, ax = plt.subplots(2,1)
     
-    for i in range(10):
+    for idx in range(len(flist)):
         try:
             # idx = np.random.randint(len(flist))
-            idx = 10 * i
+            # idx = 10 * i
+            print(idx)
 
             xyzrgb = np.load(os.path.join(args.load_from, flist[idx])).reshape(-1,6)
             pcd = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(xyzrgb[:,:3]))
@@ -89,7 +94,7 @@ def main(args):
             # o3d.visualization.draw_geometries([pcd, cam_frame])
 
             pcd = pcd.voxel_down_sample(voxel_size=0.04)
-            o3d.visualization.draw_geometries([pcd, cam_frame])
+            # o3d.visualization.draw_geometries([pcd, cam_frame])
 
             plane_model, inliers = pcd.segment_plane(distance_threshold=0.04,
                                                      ransac_n=3,
@@ -109,32 +114,37 @@ def main(args):
 
             x_axis = np.cross(y_axis, z_axis)
 
+            # rectify the point cloud
             R = np.stack([x_axis, y_axis, z_axis])
-            rectified_pcd = pcd.rotate(R, center=np.array([0., 0., 0.]))
-            print(R)
-            o3d.visualization.draw_geometries([rectified_pcd, cam_frame])
+            corn_points = pcd.select_by_index(inliers, invert=True)
+            rectified_corn = corn_points.rotate(R, center=np.array([0., 0., 0.]))
+            # o3d.visualization.draw_geometries([rectified_corn, cam_frame])
 
+            # randomly downsample the point cloud
+            num_points = np.asarray(rectified_corn.points).shape[0]
+            sampling_ratio = 1000./num_points
+            rectified_corn = rectified_corn.random_down_sample(sampling_ratio)
 
+            rectified_x = np.asarray(rectified_corn.points)[:,0]
+            rectified_y = np.asarray(rectified_corn.points)[:,1]
+            
+            ax[0].axis('square')
+            ax[0].set_xlabel('x')
+            ax[0].set_ylabel('y')
+            ax[0].set_xlim(-0.6, 0.6)
+            ax[0].set_ylim(0.5,-0.2)
+            ax[0].grid()
+            ax[0].scatter(rectified_x, rectified_y)
+            # plt.pause(0.01)
 
-            # cleaned_pcd, _ = pcd.remove_radius_outlier(30, 0.05)
+            hist, _ = np.histogram(rectified_x, np.linspace(-0.6, 0.6, 61))
+            hist[hist<20] = 0
+            ax[1].plot(hist)
 
-            # o3d.visualization.draw_geometries([cleaned_pcd, cam_frame])
-
-            # ground_candid = pcd.crop(o3d.geometry.AxisAlignedBoundingBox(np.array([-10, 0.2, -10]), 
-            #                                                                 np.array([ 10, 0.35, 10])))
-
-            # o3d.visualization.draw_geometries([ground_candid, cam_frame])
-
-            # plane_model, inliers = ground_candid.segment_plane(distance_threshold=0.03,
-            #                                                    ransac_n=3,
-            #                                                    num_iterations=100)
-
-            # b_box = pcd.get_axis_aligned_bounding_box()
-            # # b_box = pcd.get_oriented_bounding_box()
-            # max_bound = b_box.get_max_bound()
-            # min_bound = b_box.get_min_bound()
-
-            # print('max: ', max_bound, 'min: ', min_bound, 'cy: ', (max_bound[0]+min_bound[0])/2)
+            fname = flist[idx].split('.')[0] + '.png'
+            plt.savefig(os.path.join(output_dir, fname), format='png')
+            ax[0].clear()
+            ax[1].clear()
 
     
         except RuntimeError:
