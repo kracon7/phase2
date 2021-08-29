@@ -3,7 +3,7 @@ import sys
 import numpy as np
 import cv2
 from scipy.spatial import cKDTree
-
+from scipy.spatial.transform import Rotation as R
 
 def MatchSIFT(loc1, des1, loc2, des2):
     """
@@ -56,6 +56,16 @@ def MatchSIFT(loc1, des1, loc2, des2):
     ind1 = np.array(ind1)
     return x1, x2, ind1
 
+def quaternion_division(self, q, r):
+    qw, qx, qy, qz = q
+    rw, rx, ry, rz = r
+
+    tw = rw*qw + rx*qx + ry*qy + rz*qz
+    tx = rw*qx - rx*qw - ry*qz + rz*qy
+    ty = rw*qy + rx*qz - ry*qw - rz*qx
+    tz = rw*qz - rx*qy + ry*qx - rz*qw
+    return [tw, tx, ty, tz]
+
 def load_data(data_dir, frame_idx):
 	front_rgbd_dir = os.path.join(data_dir, 'front_rgbd')
 	side_color_dir = os.path.join(data_dir, 'side_color')
@@ -66,6 +76,27 @@ def load_data(data_dir, frame_idx):
 			'transform': np.load(os.path.join(transform_dir, 'frame_%07d.npy'%(frame_idx))),}
 	return data
 
+def get_rel_trans(frame1, frame2):
+	'''
+	Compute the relative transformation between frame1 and frame2
+	Input
+		frame1 -- dictionary object, stores front rgbd, side color, absolute transformation
+	Output
+		T -- transformation matrix from frame2 to frame1
+	'''
+	trans1 = frame1['transform']
+	trans2 = frame2['transform']
+	p1, q1 = trans1[:3], trans1[3:]
+	p2, q2 = trans2[:3], trans2[3:]
+	R1 = R.from_quat([q1[1], q1[2], q1[3], q1[0]]).as_matrix()
+	R2 = R.from_quat([q2[1], q2[2], q2[3], q2[0]]).as_matrix()
+	
+	T_1_map, T_map_2 = np.eye(4), np.eye(4)
+	T_1_map[:3,:3], T_1_map[:3,3] = R1, p1
+	T_map_2[:3,:3], T_map_2[:3,3] = R2.T, -R2.T @ p2
+	T = T_1_map @ T_map_2
+	return T
+
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 frame_idx_1 = 1
@@ -74,3 +105,7 @@ data_dir = '/home/jc/tmp/pred_distance'
 
 frame1 = load_data(data_dir, frame_idx_1)
 frame2 = load_data(data_dir, frame_idx_2)
+
+rel_trans = get_rel_trans(frame1, frame2)
+print(rel_trans)
+
