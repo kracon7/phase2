@@ -5,6 +5,11 @@ import cv2
 from scipy.spatial import cKDTree
 from scipy.spatial.transform import Rotation as R
 
+import torch
+import torchvision.transforms as T
+import argparse
+from corridor_ransac import find_ground_plane
+
 def MatchSIFT(loc1, des1, loc2, des2):
     """
     Find the matches of SIFT features between two images
@@ -98,7 +103,16 @@ def get_rel_trans(frame1, frame2):
 	return T
 
 
+parser = argparse.ArgumentParser()
+parser.add_argument("-m", "--model", default="model/faster-rcnn-corn_bgr8_ep100.pt",
+                help="path to the model")
+parser.add_argument("-c", "--confidence", type=float, default=0.8, 
+                help="confidence to keep predictions")
+args = parser.parse_args()
+
+CLASS_NAMES = ["__background__", "corn_stem"]
 ROOT = os.path.dirname(os.path.abspath(__file__))
+
 frame_idx_1 = 1
 frame_idx_2 = 21
 data_dir = '/home/jc/tmp/pred_distance'
@@ -107,5 +121,8 @@ frame1 = load_data(data_dir, frame_idx_1)
 frame2 = load_data(data_dir, frame_idx_2)
 
 rel_trans = get_rel_trans(frame1, frame2)
-print(rel_trans)
+
+device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+model = torch.load(os.path.join(ROOT, args.model))
+model.to(device)
 
