@@ -151,6 +151,16 @@ def filter_descriptors(bbox, kp, desc):
                 break
     return new_kp, new_desc
 
+def bbox_to_mask(bbox, im_h, im_w):
+    '''
+    generate binary mask according to bounding boxes for feature detection
+    '''
+    mask = np.zeros((im_h, im_w), dtype='uint8')
+    for box in bbox:
+        top, bottom, left, right = int(box[0][1]), int(box[1][1]), int(box[0][0]), int(box[1][0])
+        mask[top:bottom, left:right] = 1
+    return mask
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-m", "--model", default="model/faster-rcnn-corn_bgr8_ep100.pt",
@@ -185,12 +195,10 @@ bbox2, pred_cls_2, pred_score_2 = get_bbox(model, frame2)
 
 # create sift feature
 sift = cv2.SIFT_create()
-kp1, des1 = sift.detectAndCompute(frame1['side_color'], None)
-kp2, des2 = sift.detectAndCompute(frame2['side_color'], None)
-
-
-kp1, des1 = filter_descriptors(bbox1, kp1, des1)
-kp2, des2 = filter_descriptors(bbox2, kp2, des2)
+mask1 = bbox_to_mask(bbox1, 480, 848)
+mask2 = bbox_to_mask(bbox2, 480, 848)
+kp1, des1 = sift.detectAndCompute(frame1['side_color'], mask1)
+kp2, des2 = sift.detectAndCompute(frame2['side_color'], mask2)
 
 img1 = cv2.drawKeypoints(frame1['side_color'], kp1, None, color=(0,255,0), flags=0)
 img2 = cv2.drawKeypoints(frame2['side_color'], kp2, None, color=(0,255,0), flags=0)
