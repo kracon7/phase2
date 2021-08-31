@@ -2,6 +2,7 @@ import os
 import sys
 import numpy as np
 import cv2
+import matplotlib.pyplot as plt
 from scipy.spatial import cKDTree
 from scipy.spatial.transform import Rotation as R
 
@@ -72,35 +73,83 @@ def quaternion_division(self, q, r):
     return [tw, tx, ty, tz]
 
 def load_data(data_dir, frame_idx):
-	front_rgbd_dir = os.path.join(data_dir, 'front_rgbd')
-	side_color_dir = os.path.join(data_dir, 'side_color')
-	transform_dir = os.path.join(data_dir, 'transform')
+    front_rgbd_dir = os.path.join(data_dir, 'front_rgbd')
+    side_color_dir = os.path.join(data_dir, 'side_color')
+    transform_dir = os.path.join(data_dir, 'transform')
 
-	data = {'front_rgbd': np.load(os.path.join(front_rgbd_dir, 'frame_%07d.npy'%(frame_idx))),
-			'side_color': np.load(os.path.join(side_color_dir, 'frame_%07d.npy'%(frame_idx))),
-			'transform': np.load(os.path.join(transform_dir, 'frame_%07d.npy'%(frame_idx))),}
-	return data
+    data = {'front_rgbd': np.load(os.path.join(front_rgbd_dir, 'frame_%07d.npy'%(frame_idx))),
+            'side_color': np.load(os.path.join(side_color_dir, 'frame_%07d.npy'%(frame_idx))),
+            'transform': np.load(os.path.join(transform_dir, 'frame_%07d.npy'%(frame_idx))),}
+    return data
 
 def get_rel_trans(frame1, frame2):
-	'''
-	Compute the relative transformation between frame1 and frame2
-	Input
-		frame1 -- dictionary object, stores front rgbd, side color, absolute transformation
-	Output
-		T -- transformation matrix from frame2 to frame1
-	'''
-	trans1 = frame1['transform']
-	trans2 = frame2['transform']
-	p1, q1 = trans1[:3], trans1[3:]
-	p2, q2 = trans2[:3], trans2[3:]
-	R1 = R.from_quat([q1[1], q1[2], q1[3], q1[0]]).as_matrix()
-	R2 = R.from_quat([q2[1], q2[2], q2[3], q2[0]]).as_matrix()
-	
-	T_1_map, T_map_2 = np.eye(4), np.eye(4)
-	T_1_map[:3,:3], T_1_map[:3,3] = R1, p1
-	T_map_2[:3,:3], T_map_2[:3,3] = R2.T, -R2.T @ p2
-	T = T_1_map @ T_map_2
-	return T
+    '''
+    Compute the relative transformation between frame1 and frame2
+    Input
+        frame1 -- dictionary object, stores front rgbd, side color, absolute transformation
+    Output
+        T -- transformation matrix from frame2 to frame1
+    '''
+    trans1 = frame1['transform']
+    trans2 = frame2['transform']
+    p1, q1 = trans1[:3], trans1[3:]
+    p2, q2 = trans2[:3], trans2[3:]
+    R1 = R.from_quat([q1[1], q1[2], q1[3], q1[0]]).as_matrix()
+    R2 = R.from_quat([q2[1], q2[2], q2[3], q2[0]]).as_matrix()
+    
+    T_1_map, T_map_2 = np.eye(4), np.eye(4)
+    T_1_map[:3,:3], T_1_map[:3,3] = R1, p1
+    T_map_2[:3,:3], T_map_2[:3,3] = R2.T, -R2.T @ p2
+    T = T_1_map @ T_map_2
+    return T
+
+def get_bbox(model, frame, confidence=0.8):
+    '''
+    Get the bounding box for side view corn detection
+    Input
+        model -- pytorch model object
+        frame -- dictionary object, stores front rgbd, side color, absolute transformation
+    Output
+        bbox -- list object, bounding box position and sise
+    '''
+    transform = T.Compose([T.ToTensor()])
+    img = transform(frame['side_color']).to(device)
+    pred = model([img])
+    pred_class = [CLASS_NAMES[i] for i in list(pred[0]['labels'].cpu().numpy())]
+    pred_boxes = [[(i[0], i[1]), (i[2], i[3])] for i in list(pred[0]['boxes'].detach().cpu().numpy())]
+    pred_score = list(pred[0]['scores'].detach().cpu().numpy())
+
+    if len([x for x in pred_score if x>confidence])!=0:
+        pred_t = [pred_score.index(s) for s, c in zip(pred_score, pred_class) 
+                    if s>confidence and c=='corn_stem'][-1]
+        pred_boxes = pred_boxes[:pred_t+1]
+        pred_class = pred_class[:pred_t+1]
+        pred_score = pred_score[:pred_t+1]
+    else:
+        pred_boxes, pred_class, pred_score = None, None, None
+
+    return pred_boxes, pred_class, pred_score
+
+def filter_descriptors(bbox, kp, desc):
+    '''
+    Filter descriptors with key points that's inside any bounding boxes
+    Input 
+        bbox -- list of bounding box top-left and bottom-right corner
+        kp -- keypoint pixel positions
+        desc -- descriptors
+    Output
+        new_kp -- filtered keypoint pixel positions
+        new_desc -- filtered descriptors
+    '''
+    new_kp, new_desc = [], []
+    for i in range(len(kp)):
+        pt = kp[i].pt
+        for box in bbox:
+            if pt[0] >= box[0][0] and pt[0] < box[1][0] and pt[1] >=box[0][1] and pt[1] < box[1][1]:
+                new_kp.append(kp[i])
+                new_desc.append(desc[i])
+                break
+    return new_kp, new_desc
 
 
 parser = argparse.ArgumentParser()
@@ -114,7 +163,7 @@ CLASS_NAMES = ["__background__", "corn_stem"]
 ROOT = os.path.dirname(os.path.abspath(__file__))
 
 frame_idx_1 = 1
-frame_idx_2 = 21
+frame_idx_2 = 16
 data_dir = '/home/jc/tmp/pred_distance'
 
 frame1 = load_data(data_dir, frame_idx_1)
@@ -126,3 +175,20 @@ device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cp
 model = torch.load(os.path.join(ROOT, args.model))
 model.to(device)
 
+bbox1, pred_cls_1, pred_score_1 = get_bbox(model, frame1)
+bbox2, pred_cls_2, pred_score_2 = get_bbox(model, frame2)
+
+# create orb descriptor function
+orb = cv2.ORB_create()
+kp1, des1 = orb.detectAndCompute(frame1['side_color'], None)
+kp2, des2 = orb.detectAndCompute(frame2['side_color'], None)
+
+kp1, des1 = filter_descriptors(bbox1, kp1, des1)
+kp2, des2 = filter_descriptors(bbox2, kp2, des2)
+
+img1 = cv2.drawKeypoints(frame1['side_color'], kp1, None, color=(0,255,0), flags=0)
+img2 = cv2.drawKeypoints(frame2['side_color'], kp2, None, color=(0,255,0), flags=0)
+
+img = np.concatenate([img1, img2], axis=0)
+plt.imshow(img)
+plt.show()
