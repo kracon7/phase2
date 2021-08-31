@@ -178,10 +178,16 @@ model.to(device)
 bbox1, pred_cls_1, pred_score_1 = get_bbox(model, frame1)
 bbox2, pred_cls_2, pred_score_2 = get_bbox(model, frame2)
 
-# create orb descriptor function
-orb = cv2.ORB_create()
-kp1, des1 = orb.detectAndCompute(frame1['side_color'], None)
-kp2, des2 = orb.detectAndCompute(frame2['side_color'], None)
+# # create orb descriptor function
+# orb = cv2.ORB_create()
+# kp1, des1 = orb.detectAndCompute(frame1['side_color'], None)
+# kp2, des2 = orb.detectAndCompute(frame2['side_color'], None)
+
+# create sift feature
+sift = cv2.SIFT_create()
+kp1, des1 = sift.detectAndCompute(frame1['side_color'], None)
+kp2, des2 = sift.detectAndCompute(frame2['side_color'], None)
+
 
 kp1, des1 = filter_descriptors(bbox1, kp1, des1)
 kp2, des2 = filter_descriptors(bbox2, kp2, des2)
