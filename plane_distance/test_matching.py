@@ -221,6 +221,11 @@ good = []
 for m,n in matches:
     if m.distance < 0.5*n.distance:
         good.append([m])
+
+src_pts = np.float32([ kp1[m[0].queryIdx].pt for m in good ]).reshape(-1,1,2)
+dst_pts = np.float32([ kp2[m[0].trainIdx].pt for m in good ]).reshape(-1,1,2)  
+
+print(src_pts, dst_pts)
 img3 = cv2.drawMatchesKnn(frame1['side_color'], kp1, frame2['side_color'], kp2, 
             good,None,flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
 plt.imshow(img3),plt.show()
