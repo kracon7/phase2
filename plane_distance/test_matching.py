@@ -97,10 +97,10 @@ def get_rel_trans(frame1, frame2):
     R1 = R.from_quat([q1[1], q1[2], q1[3], q1[0]]).as_matrix()
     R2 = R.from_quat([q2[1], q2[2], q2[3], q2[0]]).as_matrix()
     
-    T_1_map, T_map_2 = np.eye(4), np.eye(4)
-    T_1_map[:3,:3], T_1_map[:3,3] = R1, p1
-    T_map_2[:3,:3], T_map_2[:3,3] = R2.T, -R2.T @ p2
-    T = T_1_map @ T_map_2
+    T_map_1, T_2_map = np.eye(4), np.eye(4)
+    T_map_1[:3,:3], T_map_1[:3,3] = R1.T, -R1.T @ p1
+    T_2_map[:3,:3], T_2_map[:3,3] = R2, p2
+    T = T_2_map @ T_map_1
     return T
 
 def get_bbox(model, frame, confidence=0.8):
@@ -153,15 +153,13 @@ def estimate_distance(kp1, kp2, K, T, normal):
     A, b = [], []
     R, C = T[:3, :3], T[:3, 3]
     for pt1, pt2 in zip(kp1, kp2):
-        u1, v1, u2, v2 = pt1.pt[0], pt1.pt[1], pt2.pt[0], pt2.pt[1]
+        u1, v1, u2, v2 = pt1[0], pt1[1], pt2[0], pt2[1]
         L = K @ R @ np.linalg.inv(K) @ np.array([u1,v1,1]) / \
             (normal @ np.linalg.inv(K) @ np.array([u1,v1,1]))
         S = K @ C
 
-        A.append(np.array([[u2*L[2] - L[0]],
-                           [v2*L[2] - L[1]]]))
-        b.append(np.array([[u2*S[2] - S[0]],
-                           [v2*S[2] - S[1]]]))
+        A += [ u2*L[2] - L[0]]
+        b += [ u2*S[2] - S[0]]
 
     A, b = np.stack(A), np.stack(b)
     d = 1/(A @ A) * A @ b
@@ -222,11 +220,20 @@ for m,n in matches:
     if m.distance < 0.5*n.distance:
         good.append([m])
 
-src_pts = np.float32([ kp1[m[0].queryIdx].pt for m in good ]).reshape(-1,1,2)
-dst_pts = np.float32([ kp2[m[0].trainIdx].pt for m in good ]).reshape(-1,1,2)  
+src_pts = np.float32([ kp1[m[0].queryIdx].pt for m in good ]).reshape(-1,2)
+dst_pts = np.float32([ kp2[m[0].trainIdx].pt for m in good ]).reshape(-1,2)  
+# # visualize matched pairs
+# img3 = cv2.drawMatchesKnn(frame1['side_color'], kp1, frame2['side_color'], kp2, 
+#             good,None,flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+# plt.imshow(img3),plt.show()
 
-print(src_pts, dst_pts)
-img3 = cv2.drawMatchesKnn(frame1['side_color'], kp1, frame2['side_color'], kp2, 
-            good,None,flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
-plt.imshow(img3),plt.show()
+R = find_ground_plane(frame1['front_rgbd'])
+ground_normal = R[2]
 
+K = np.array([[615.311279296875,   0.0,             430.1778869628906],
+              [  0.0,            615.4699096679688, 240.68307495117188],
+              [  0.0,              0.0,               1.0]])
+
+d = estimate_distance(src_pts, dst_pts, K, rel_trans, ground_normal)
+
+print(d)

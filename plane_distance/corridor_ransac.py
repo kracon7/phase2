@@ -11,6 +11,7 @@ def find_ground_plane(xyzrgb):
 			 y is ground plane normal pointing up
 			 z is corn line vector pointing front
 	'''
+	xyzrgb = xyzrgb.reshape(-1,6)
 	pcd = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(xyzrgb[:,:3]))
 	pcd.colors = o3d.utility.Vector3dVector(xyzrgb[:,3:].astype('float') / 255)
 	# o3d.visualization.draw_geometries([pcd, cam_frame])
