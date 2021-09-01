@@ -130,27 +130,6 @@ def get_bbox(model, frame, confidence=0.8):
 
     return pred_boxes, pred_class, pred_score
 
-def filter_descriptors(bbox, kp, desc):
-    '''
-    Filter descriptors with key points that's inside any bounding boxes
-    Input 
-        bbox -- list of bounding box top-left and bottom-right corner
-        kp -- keypoint pixel positions
-        desc -- descriptors
-    Output
-        new_kp -- filtered keypoint pixel positions
-        new_desc -- filtered descriptors
-    '''
-    new_kp, new_desc = [], []
-    for i in range(len(kp)):
-        pt = kp[i].pt
-        for box in bbox:
-            if pt[0] >= box[0][0] and pt[0] < box[1][0] and pt[1] >=box[0][1] and pt[1] < box[1][1]:
-                new_kp.append(kp[i])
-                new_desc.append(desc[i])
-                break
-    return new_kp, new_desc
-
 def bbox_to_mask(bbox, im_h, im_w):
     '''
     generate binary mask according to bounding boxes for feature detection
@@ -161,6 +140,32 @@ def bbox_to_mask(bbox, im_h, im_w):
         mask[top:bottom, left:right] = 1
     return mask
 
+def estimate_distance(kp1, kp2, K, T, normal):
+    '''
+    Least square estimation of plane distance 
+    Input
+        kp1 -- matched key points of frame1
+        kp2 -- matched key points of frame2
+        K -- camera intrinsic matrix
+        T -- camera pose transformation, from frame2 to frame1
+        normal -- estimated plane normal direction, numpy array
+    '''
+    A, b = [], []
+    R, C = T[:3, :3], T[:3, 3]
+    for pt1, pt2 in zip(kp1, kp2):
+        u1, v1, u2, v2 = pt1.pt[0], pt1.pt[1], pt2.pt[0], pt2.pt[1]
+        L = K @ R @ np.linalg.inv(K) @ np.array([u1,v1,1]) / \
+            (normal @ np.linalg.inv(K) @ np.array([u1,v1,1]))
+        S = K @ C
+
+        A.append(np.array([[u2*L[2] - L[0]],
+                           [v2*L[2] - L[1]]]))
+        b.append(np.array([[u2*S[2] - S[0]],
+                           [v2*S[2] - S[1]]]))
+
+    A, b = np.stack(A), np.stack(b)
+    d = 1/(A @ A) * A @ b
+    return d
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-m", "--model", default="model/faster-rcnn-corn_bgr8_ep100.pt",
@@ -200,9 +205,23 @@ mask2 = bbox_to_mask(bbox2, 480, 848)
 kp1, des1 = sift.detectAndCompute(frame1['side_color'], mask1)
 kp2, des2 = sift.detectAndCompute(frame2['side_color'], mask2)
 
-img1 = cv2.drawKeypoints(frame1['side_color'], kp1, None, color=(0,255,0), flags=0)
-img2 = cv2.drawKeypoints(frame2['side_color'], kp2, None, color=(0,255,0), flags=0)
+# # visualize masked features
+# img1 = cv2.drawKeypoints(frame1['side_color'], kp1, None, color=(0,255,0), flags=0)
+# img2 = cv2.drawKeypoints(frame2['side_color'], kp2, None, color=(0,255,0), flags=0)
+# img = np.concatenate([img1, img2], axis=0)
+# plt.imshow(img)
+# plt.show()
 
-img = np.concatenate([img1, img2], axis=0)
-plt.imshow(img)
-plt.show()
+
+# match sift key points
+bf = cv2.BFMatcher()
+matches = bf.knnMatch(des1,des2,k=2)
+# Apply ratio test
+good = []
+for m,n in matches:
+    if m.distance < 0.5*n.distance:
+        good.append([m])
+img3 = cv2.drawMatchesKnn(frame1['side_color'], kp1, frame2['side_color'], kp2, 
+            good,None,flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+plt.imshow(img3),plt.show()
+
