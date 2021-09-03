@@ -26,9 +26,10 @@ def find_ground_plane(xyzrgb):
 	plane_model, inliers = pcd.segment_plane(distance_threshold=0.04,
 	                                         ransac_n=3,
 	                                         num_iterations=100)
-	y_axis = plane_model[:3]
+	y_axis, d = plane_model[:3], plane_model[3]
 	if y_axis[1] < 0:
 	    y_axis = - y_axis
+	    d = -d
 	# display_inlier_outlier(pcd, inliers)
 
 	# use ground points to do PCA to find z axis
@@ -44,4 +45,4 @@ def find_ground_plane(xyzrgb):
 	# rectify the point cloud
 	R = np.stack([x_axis, y_axis, z_axis])
 
-	return R
+	return R, d
