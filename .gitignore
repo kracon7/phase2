@@ -117,3 +117,4 @@ line_detection
 my_bag*
 corn_front_data/
 corn_corridor_plot/
+*.pt
