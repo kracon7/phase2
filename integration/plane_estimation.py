@@ -82,7 +82,7 @@ class PlaneEstimator():
             mask[top:bottom, left:right] = 1
         return mask
 
-    def estimate_distance(self, kp1, kp2, K, T, normal):
+    def estimate_distance(self, kp1, kp2, T, normal):
         '''
         Least square estimation of plane distance 
         Input
@@ -92,6 +92,7 @@ class PlaneEstimator():
             T -- camera pose transformation, from frame2 to frame1
             normal -- estimated plane normal direction, numpy array
         '''
+        K = self.K
         A, b = [], []
         R, C = T[:3, :3], T[:3, 3]
         S = K @ C
@@ -109,10 +110,11 @@ class PlaneEstimator():
         '''
         use RANSAC to esitmate plane distance
         '''
+        K = self.K
         R, C = T[:3, :3], T[:3, 3]
-        S = self.K @ C
-        E = self.K @ R @ np.linalg.inv(self.K)                    # 3 x 3
-        F = (normal @ np.linalg.inv(self.K)).reshape(1,3)    # 1 x 3
+        S = K @ C
+        E = K @ R @ np.linalg.inv(K)                    # 3 x 3
+        F = (normal @ np.linalg.inv(K)).reshape(1,3)    # 1 x 3
         X1 = np.insert(kp1, 2, 1, axis=1).T             # 3 x N
         L = E @ X1 / (F @ X1)                           # 3 x N
         
@@ -120,14 +122,14 @@ class PlaneEstimator():
         max_inlier = 0
         d_result = 0
         if num_choice >= num_ft:
-            d_result = self.estimate_distance(kp1, kp2, K, T, normal)
+            d_result = self.estimate_distance(kp1, kp2, T, normal)
         else:
             for i in range(ransac_iter):
                 sample_idx = np.random.choice(num_ft, num_choice) 
                 sampled_kp1 = kp1[sample_idx]
                 sampled_kp2 = kp2[sample_idx]
 
-                d = self.estimate_distance(sampled_kp1, sampled_kp2, K, T, normal)
+                d = self.estimate_distance(sampled_kp1, sampled_kp2, T, normal)
 
                 # compute reprojection error and count inliers
                 u2_err = (-d * L[0] + S[0]) / (-d * L[2] + S[2]) - kp2[:,0]
@@ -223,7 +225,7 @@ class PlaneEstimator():
             dst_pts = np.float32([ kp2[m[0].trainIdx].pt for m in good ]).reshape(-1,2)  
 
             points = self.rays * frame1.front_depth.reshape(self.im_h, self.im_w, 1)
-            front_xyzrgb = np.concatenate([points, fram_1.front_color], axis=2)
+            front_xyzrgb = np.concatenate([points, frame1.front_color], axis=2)
             R_ground, d_ground = self.find_ground_plane(front_xyzrgb)
             ground_normal = R_ground[2]
 
