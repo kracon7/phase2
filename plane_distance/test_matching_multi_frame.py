@@ -11,6 +11,8 @@ import torchvision.transforms as T
 import argparse
 from corridor_ransac import find_ground_plane
 
+plt.ion()
+
 def MatchSIFT(loc1, des1, loc2, des2):
     """
     Find the matches of SIFT features between two images
@@ -152,18 +154,110 @@ def estimate_distance(kp1, kp2, K, T, normal):
     '''
     A, b = [], []
     R, C = T[:3, :3], T[:3, 3]
-    for pt1, pt2 in zip(kp1, kp2):
-        u1, v1, u2, v2 = pt1[0], pt1[1], pt2[0], pt2[1]
-        L = K @ R @ np.linalg.inv(K) @ np.array([u1,v1,1]) / \
-            (normal @ np.linalg.inv(K) @ np.array([u1,v1,1]))
-        S = K @ C
+    S = K @ C
+    E = K @ R @ np.linalg.inv(K)                    # 3 x 3
+    F = (normal @ np.linalg.inv(K)).reshape(1,3)    # 1 x 3
+    X1 = np.insert(kp1, 2, 1, axis=1).T             # 3 x N
+    L = E @ X1 / (F @ X1)                           # 3 x N
+    A = kp2[:,0] * L[2] - L[0]
+    b = kp2[:,0] * S[2] - S[0]
+    d = 1/(A@A) * A @ b
+    
+    # for pt1, pt2 in zip(kp1, kp2):
+    #     u1, v1, u2, v2 = pt1[0], pt1[1], pt2[0], pt2[1]
+    #     L = E @ np.array([u1,v1,1]) / (F @ np.array([u1,v1,1]))
 
-        A += [ u2*L[2] - L[0]]
-        b += [ u2*S[2] - S[0]]
+    #     A += [ u2*L[2] - L[0]]
+    #     b += [ u2*S[2] - S[0]]
 
-    A, b = np.stack(A), np.stack(b)
-    d = 1/(A @ A) * A @ b
+    # A, b = np.stack(A), np.stack(b)
+    # d = 1/(A @ A) * A @ b
+
     return d
+
+def estimate_distance_ransac(kp1, kp2, K, T, normal, ransac_thr, ransac_iter):
+    '''
+    use RANSAC to esitmate plane distance
+    '''
+    R, C = T[:3, :3], T[:3, 3]
+    S = K @ C
+    E = K @ R @ np.linalg.inv(K)                    # 3 x 3
+    F = (normal @ np.linalg.inv(K)).reshape(1,3)    # 1 x 3
+    X1 = np.insert(kp1, 2, 1, axis=1).T             # 3 x N
+    L = E @ X1 / (F @ X1)                           # 3 x N
+    
+    num_ft, num_choice = kp1.shape[0], 8
+    max_inlier = 0
+    d_result = 0
+    if num_choice >= num_ft:
+        d_result = estimate_distance(kp1, kp2, K, T, normal)
+    else:
+        for i in range(ransac_iter):
+            sample_idx = np.random.choice(num_ft, num_choice) 
+            sampled_kp1 = kp1[sample_idx]
+            sampled_kp2 = kp2[sample_idx]
+
+            d = estimate_distance(sampled_kp1, sampled_kp2, K, T, normal)
+
+            # compute reprojection error and count inliers
+            u2_err = (-d * L[0] + S[0]) / (-d * L[2] + S[2]) - kp2[:,0]
+            n_inlier = np.sum(np.abs(u2_err) < 5)
+            if n_inlier > max_inlier:
+                max_inlier = n_inlier
+                d_result = d
+            
+            # if no outliers then break loop
+            if max_inlier == num_ft:
+                break
+
+    u2_err = (-d_result * L[0] + S[0]) / (-d_result * L[2] + S[2]) - kp2[:,0]
+    inliers = u2_err < 5
+    dpx = np.average(kp1[inliers, 0] - kp2[inliers, 0])
+    print("translation in x: %8.4f average dx: %5.1f, ratio: %10.2f, d_result: %8.4f "%(
+            T[0,3], dpx, dpx/T[0,3], -d_result*100), end='')
+
+    return d_result
+
+def draw_side_plane(img, K, R, d_plane, d_ground, color=(255,255,0)):
+    a, b, c, d = R[2,0], R[2,1], R[2,2], d_plane
+    d_ground = 0.11
+    vx_side, vy_side = np.array([1,0,0]), np.array([0,1,0])
+    bottom_center = np.array([0, d_ground, (-d-b*d_ground)/c])
+    bottom_right = bottom_center + 0.2 * vx_side
+    bottom_left = bottom_center - 0.2 * vx_side
+    top_right = bottom_right - 0.2 * vy_side
+    top_left = bottom_left - 0.2 * vy_side
+    
+    bottom = np.linspace(bottom_left, bottom_right, 11)
+    top = np.linspace(top_left, top_right, 11)
+    right = np.linspace(bottom_right, top_right, 6)
+    left = np.linspace(bottom_left, top_left, 6)
+    
+    bottom_pixels = bottom @ K.T
+    top_pixels = top @ K.T
+    right_pixels = right @ K.T
+    left_pixels = left @ K.T
+    
+    bottom_pixels = bottom_pixels / bottom_pixels[:,2].reshape(-1,1)
+    top_pixels = top_pixels / top_pixels[:,2].reshape(-1,1)
+    right_pixels = right_pixels / right_pixels[:,2].reshape(-1,1)
+    left_pixels = left_pixels / left_pixels[:,2].reshape(-1,1)
+
+    bottom_pixels = bottom_pixels[:,:2].astype('int')
+    top_pixels = top_pixels[:,:2].astype('int')
+    right_pixels = right_pixels[:,:2].astype('int')
+    left_pixels = left_pixels[:,:2].astype('int')
+
+    drawn_img = img.copy()
+    color = (255,255,0)
+    for p1, p2 in zip(bottom_pixels, top_pixels):
+        drawn_img = cv2.line(drawn_img, (p1[0], p1[1]), (p2[0], p2[1]), color, 2)
+    for p1, p2 in zip(right_pixels, left_pixels):
+        drawn_img = cv2.line(drawn_img, (p1[0], p1[1]), (p2[0], p2[1]), color, 2)
+    
+    print('bottom_width: %d'%(bottom_pixels[-1,0]-bottom_pixels[0,0]))    
+    return drawn_img
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-m", "--model", default="model/faster-rcnn-corn_bgr8_ep100.pt",
@@ -175,65 +269,72 @@ args = parser.parse_args()
 CLASS_NAMES = ["__background__", "corn_stem"]
 ROOT = os.path.dirname(os.path.abspath(__file__))
 
-frame_idx_1 = 1
-frame_idx_2 = 16
-data_dir = '/home/jc/tmp/pred_distance'
-
-frame1 = load_data(data_dir, frame_idx_1)
-frame2 = load_data(data_dir, frame_idx_2)
-
-rel_trans = get_rel_trans(frame1, frame2)
-
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 model = torch.load(os.path.join(ROOT, args.model))
 model.to(device)
 
-bbox1, pred_cls_1, pred_score_1 = get_bbox(model, frame1)
-bbox2, pred_cls_2, pred_score_2 = get_bbox(model, frame2)
+data_dir = '/home/jc/tmp/pred_distance'
+output_dir = '/home/jc/tmp/sfm_drawn'
+dt = 15
+num_img = len(os.listdir(os.path.join(data_dir, 'side_color')))
+for i in range(1, num_img - dt-1):
+    print('working on frame %d'%(i))
+    frame_idx_1 = i
+    frame_idx_2 = i + dt
 
-# # create orb descriptor function
-# orb = cv2.ORB_create()
-# kp1, des1 = orb.detectAndCompute(frame1['side_color'], None)
-# kp2, des2 = orb.detectAndCompute(frame2['side_color'], None)
+    frame1 = load_data(data_dir, frame_idx_1)
+    frame2 = load_data(data_dir, frame_idx_2)
 
-# create sift feature
-sift = cv2.SIFT_create()
-mask1 = bbox_to_mask(bbox1, 480, 848)
-mask2 = bbox_to_mask(bbox2, 480, 848)
-kp1, des1 = sift.detectAndCompute(frame1['side_color'], mask1)
-kp2, des2 = sift.detectAndCompute(frame2['side_color'], mask2)
+    rel_trans = get_rel_trans(frame1, frame2)
 
-# # visualize masked features
-# img1 = cv2.drawKeypoints(frame1['side_color'], kp1, None, color=(0,255,0), flags=0)
-# img2 = cv2.drawKeypoints(frame2['side_color'], kp2, None, color=(0,255,0), flags=0)
-# img = np.concatenate([img1, img2], axis=0)
-# plt.imshow(img)
-# plt.show()
+    bbox1, pred_cls_1, pred_score_1 = get_bbox(model, frame1)
+    bbox2, pred_cls_2, pred_score_2 = get_bbox(model, frame2)
 
+    # create sift feature
+    sift = cv2.SIFT_create()
+    mask1 = bbox_to_mask(bbox1, 480, 848)
+    mask2 = bbox_to_mask(bbox2, 480, 848)
+    kp1, des1 = sift.detectAndCompute(frame1['side_color'], mask1)
+    kp2, des2 = sift.detectAndCompute(frame2['side_color'], mask2)
 
-# match sift key points
-bf = cv2.BFMatcher()
-matches = bf.knnMatch(des1,des2,k=2)
-# Apply ratio test
-good = []
-for m,n in matches:
-    if m.distance < 0.5*n.distance:
-        good.append([m])
+    # # visualize masked features
+    # if i == 385:
+    #     img1 = cv2.drawKeypoints(frame1['side_color'], kp1, None, color=(0,255,0), flags=0)
+    #     img2 = cv2.drawKeypoints(frame2['side_color'], kp2, None, color=(0,255,0), flags=0)
+    #     img = np.concatenate([img1, img2], axis=0)
+    #     plt.imshow(img)
+    #     plt.pause(0.01)
 
-src_pts = np.float32([ kp1[m[0].queryIdx].pt for m in good ]).reshape(-1,2)
-dst_pts = np.float32([ kp2[m[0].trainIdx].pt for m in good ]).reshape(-1,2)  
-# # visualize matched pairs
-# img3 = cv2.drawMatchesKnn(frame1['side_color'], kp1, frame2['side_color'], kp2, 
-#             good,None,flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
-# plt.imshow(img3),plt.show()
+    # match sift key points
+    bf = cv2.BFMatcher()
+    matches = bf.knnMatch(des1,des2,k=2)
+    # Apply ratio test
+    good = []
+    for m,n in matches:
+        if m.distance < 0.6*n.distance:
+            good.append([m])
 
-R = find_ground_plane(frame1['front_rgbd'])
-ground_normal = R[2]
+    if len(good) > 5:
+        src_pts = np.float32([ kp1[m[0].queryIdx].pt for m in good ]).reshape(-1,2)
+        dst_pts = np.float32([ kp2[m[0].trainIdx].pt for m in good ]).reshape(-1,2)  
 
-K = np.array([[615.311279296875,   0.0,             430.1778869628906],
-              [  0.0,            615.4699096679688, 240.68307495117188],
-              [  0.0,              0.0,               1.0]])
+        R_ground, d_ground = find_ground_plane(frame1['front_rgbd'])
+        ground_normal = R_ground[2]
 
-d = estimate_distance(src_pts, dst_pts, K, rel_trans, ground_normal)
+        K = np.array([[615.311279296875,   0.0,             430.1778869628906],
+                      [  0.0,            615.4699096679688, 240.68307495117188],
+                      [  0.0,              0.0,               1.0]])
 
-print(d)
+        d_plane = estimate_distance_ransac(src_pts, dst_pts, K, rel_trans, ground_normal, 5, 10)
+
+        # draw grid in side view images
+        d_ground_side = - d_ground - 0.099
+        drawn_side_img = draw_side_plane(frame1['side_color'], K, R_ground, d_plane, d_ground_side)
+
+        # draw vanishing point z in front view images
+        ground_z = R_ground[2]
+        vpz = (K @ (ground_z / ground_z[2]))[:2]
+        drawn_front_img = cv2.circle(frame1['front_rgbd'][:,:,3:].astype('uint8'), (int(vpz[0]), int(vpz[1])), 4, (0,255,255), 2)
+
+        drawn_img = np.concatenate([drawn_side_img, drawn_front_img], axis=0)
+        cv2.imwrite(os.path.join(output_dir, 'frame_%07d.png'%(i)), drawn_img)
