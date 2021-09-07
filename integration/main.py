@@ -59,7 +59,8 @@ for i in range(1, num_frames):
 	frame = pickle.load(open(os.path.join(frame_dir, 'frame_%07d.pkl'%(i)), 'rb'))
 	print('Loaded frame number %d'%i)
 
-	frame1 = pickle.load(open(os.path.join(frame_dir, 'frame_%07d.pkl'%(i)), 'rb'))
-	frame2 = pickle.load(open(os.path.join(frame_dir, 'frame_%07d.pkl'%(i+20)), 'rb'))
+	plane_estimator.update(frame)
+	# frame1 = pickle.load(open(os.path.join(frame_dir, 'frame_%07d.pkl'%(i)), 'rb'))
+	# frame2 = pickle.load(open(os.path.join(frame_dir, 'frame_%07d.pkl'%(i+20)), 'rb'))
 
-	plane_estimator.process_frames(frame1, frame2)
+	# plane_estimator.process_frames(frame1, frame2)

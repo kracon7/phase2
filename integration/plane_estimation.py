@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import numpy.linalg as la
 import open3d as o3d
 from scipy.spatial.transform import Rotation as R
 import torch
@@ -220,6 +221,7 @@ class PlaneEstimator():
             if m.distance < 0.6*n.distance:
                 good.append([m])
 
+        d_plane = 0
         if len(good) > 5:
             src_pts = np.float32([ kp1[m[0].queryIdx].pt for m in good ]).reshape(-1,2)
             dst_pts = np.float32([ kp2[m[0].trainIdx].pt for m in good ]).reshape(-1,2)  
@@ -231,16 +233,36 @@ class PlaneEstimator():
 
             d_plane = self.estimate_distance_ransac(src_pts, dst_pts, rel_trans, ground_normal, 5, 10)
 
-            print(d_plane)
-            # draw grid in side view images
-            d_ground_side = - d_ground - 0.099
-            drawn_side_img = draw_side_plane(frame1['side_color'], K, R_ground, d_plane, d_ground_side)
+        return d_plane
 
-            # draw vanishing point z in front view images
-            ground_z = R_ground[2]
-            vpz = (K @ (ground_z / ground_z[2]))[:2]
-            drawn_front_img = cv2.circle(frame1['front_rgbd'][:,:,3:].astype('uint8'), (int(vpz[0]), int(vpz[1])), 4, (0,255,255), 2)
+            # print(d_plane)
+            # # draw grid in side view images
+            # d_ground_side = - d_ground - 0.099
+            # drawn_side_img = draw_side_plane(frame1['side_color'], K, R_ground, d_plane, d_ground_side)
 
-            drawn_img = np.concatenate([drawn_side_img, drawn_front_img], axis=0)
-            cv2.imwrite(os.path.join(output_dir, 'frame_%07d.png'%(i)), drawn_img)
+            # # draw vanishing point z in front view images
+            # ground_z = R_ground[2]
+            # vpz = (K @ (ground_z / ground_z[2]))[:2]
+            # drawn_front_img = cv2.circle(frame1['front_rgbd'][:,:,3:].astype('uint8'), (int(vpz[0]), int(vpz[1])), 4, (0,255,255), 2)
 
+            # drawn_img = np.concatenate([drawn_side_img, drawn_front_img], axis=0)
+            # cv2.imwrite(os.path.join(output_dir, 'frame_%07d.png'%(i)), drawn_img)
+
+    def update(self, frame):
+        '''
+        update frame buffer based on distance and estimate the plane parameters
+        '''
+
+        # update frame buffer 
+        self.frame_buffer.append(frame)
+        dmax = la.norm(frame.pose[:3] - self.frame_buffer[0].pose[:3])
+        while dmax > 0.06:
+            self.frame_buffer.pop(0)
+            dmax = la.norm(frame.pose[:3] - self.frame_buffer[0].pose[:3])
+
+        if dmax > 0.04:
+            frame1, frame2 = self.frame_buffer[0], self.frame_buffer[-1]
+            d_plane = self.process_frames(frame1, frame2)
+            if d_plane < 0:
+                print("Baseline %8.2fcm, updated plane distance to be %8.2fcm "%(dmax*100, -d_plane*100))
+                self.d_plane = d_plane
