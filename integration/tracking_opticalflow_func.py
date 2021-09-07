@@ -119,7 +119,7 @@ def corn_tracking_opticalflow(frame_dir, model_path = "./output/faster-rcnn-corn
 
                 # print("color dict", color_dict)
 
-                corn_id_bbox = []
+                corn_id_bbox = dict()
                 for i, (new, old) in enumerate(zip(good_new, good_old)):
                     # Returns a contiguous flattened array as (x, y) coordinates for new point
                     a, b = new.ravel()
@@ -145,9 +145,10 @@ def corn_tracking_opticalflow(frame_dir, model_path = "./output/faster-rcnn-corn
 
                         frame = cv2.rectangle(frame, new_bbox_coor1, new_bbox_coor2, color_old, thickness=2) ### added today                    
                         frame = cv2.putText(frame, str(total_frames), (100,100),cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 10, cv2.LINE_AA)
-                        corn_id_bbox.append([new_bbox_coor1, new_bbox_coor2])
+                        # corn_id_bbox.append([new_bbox_coor1, new_bbox_coor2])
+                        corn_id_bbox[i] =[new_bbox_coor1, new_bbox_coor2]
                 print("total fr", total_frames,"corn_id", corn_id_bbox)
-                corn_id_bbox_dict[total_frames] = corn_id_bbox
+                corn_id_bbox_dict[frame_number] = corn_id_bbox
                 centroids = good_new.reshape(-1, 1, 2)
 
         total_frames += 1
