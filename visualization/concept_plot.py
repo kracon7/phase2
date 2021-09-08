@@ -58,6 +58,7 @@ def draw_camera(origin=[0,0,0], q=[1,0,0,0], scale=0.13):
 	# apply frame translation
 	for m in mesh:
 		m.translate(np.array(origin), relative=True)
+
 	return mesh
 
 
@@ -89,13 +90,11 @@ cam3 = draw_camera(origin=[-0.1, -0.65, 0.1], q=[0.5, 0.5, 0.5, -0.5])
 
 alpha = 0.006
 mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_alpha_shape(pcd, alpha)
-# m = [cam_frame_1, cam_frame_2] + cam1 + cam2
-m = cam1 + cam2 + cam3
-for item in m:
-	mesh += item
-o3d.visualization.draw_geometries([mesh], mesh_show_back_face=True)
+o3d.visualization.draw_geometries([mesh] + cam1 + cam2 + cam3, mesh_show_back_face=True)
 
 o3d.io.write_triangle_mesh("corn_concept.ply", mesh)
+cam0 = draw_camera()
+o3d.io.write_triangle_mesh("camera.ply", cam0)
 
 
 # # ======================    front rgbd  ===================
