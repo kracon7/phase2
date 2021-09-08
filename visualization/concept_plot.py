@@ -76,7 +76,7 @@ pcd.translate(np.array([0.144, 0.814, 0.045]), relative=True)
 # o3d.visualization.draw_geometries([pcd, cam_frame])
 
 # crop point cloud to filter out background
-pcd = pcd.crop(o3d.geometry.AxisAlignedBoundingBox(np.array([-0, -100, -100]), 
+pcd = pcd.crop(o3d.geometry.AxisAlignedBoundingBox(np.array([-0, -0.8, -100]), 
                                                    np.array([0.55, 0.1, 100])))
 # o3d.visualization.draw_geometries([pcd, cam_frame])
             
