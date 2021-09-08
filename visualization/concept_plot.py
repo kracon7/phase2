@@ -6,71 +6,60 @@ import open3d as o3d
 from math import pi
 
 
-def draw_frame(origin=[0,0,0], q=[0,0,0,1], scale=1):
+def draw_frame(origin=[0,0,0], q=[1,0,0,0], scale=1):
     # open3d quaternion format qw qx qy qz
-
-    o3d_quat = np.array([q[3], q[0], q[1], q[2]])
 
     mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
                      size=scale, origin=origin)
     frame_rot = copy.deepcopy(mesh_frame).rotate(
-                mesh_frame.get_rotation_matrix_from_quaternion(o3d_quat), center=origin)
+                mesh_frame.get_rotation_matrix_from_quaternion(q), center=origin)
     
     return frame_rot
 
-def draw_camera(origin=[0,0,0], scale=0.5):
+def draw_camera(origin=[0,0,0], q=[1,0,0,0], scale=0.13):
+	# draw original camera aixs
+	axis = draw_frame([0,0,0], [1,0,0,0], scale=0.5*scale)
+	mesh = [axis]
 
-
+	# draw the original camera frame
 	cyld_0 = o3d.geometry.TriangleMesh.create_cylinder(radius=0.01*scale, height=scale)
 	cyld_0.paint_uniform_color([0,0,0])
 	cyld_0.translate(np.array([0,0,scale/2]))
-	cyld_0.rotate(
-		cyld_0.get_rotation_matrix_from_xyz(np.array([0, pi/2,0])), center=[0,0,0])
 	cyld_1 = copy.deepcopy(cyld_0).rotate(
-			cyld_0.get_rotation_matrix_from_zyx(np.array([pi/4, pi/5,0])), center=[0,0,0])
+			cyld_0.get_rotation_matrix_from_zyx(np.array([pi/4, pi/4,0])), center=[0,0,0])
 	cyld_2 = copy.deepcopy(cyld_0).rotate(
-			cyld_0.get_rotation_matrix_from_zyx(np.array([-pi/4, pi/5,0])), center=[0,0,0])
+			cyld_0.get_rotation_matrix_from_zyx(np.array([-pi/4, pi/4,0])), center=[0,0,0])
 	cyld_3 = copy.deepcopy(cyld_0).rotate(
-			cyld_0.get_rotation_matrix_from_zyx(np.array([pi/4, -pi/5,0])), center=[0,0,0])
+			cyld_0.get_rotation_matrix_from_zyx(np.array([pi/4, -pi/4,0])), center=[0,0,0])
 	cyld_4 = copy.deepcopy(cyld_0).rotate(
-			cyld_0.get_rotation_matrix_from_zyx(np.array([-pi/4, -pi/5,0])), center=[0,0,0])
+			cyld_0.get_rotation_matrix_from_zyx(np.array([-pi/4, -pi/4,0])), center=[0,0,0])
 
-	mesh = [cyld_1, cyld_2, cyld_3, cyld_4]
+	mesh += [cyld_1, cyld_2, cyld_3, cyld_4]
 
-	cyld_0 = o3d.geometry.TriangleMesh.create_cylinder(radius=0.01*scale, height=1.16*scale)
+	cyld_0 = o3d.geometry.TriangleMesh.create_cylinder(radius=0.01*scale, height=1*scale)
 	cyld_0.paint_uniform_color([0,0,0])
-	cyld_5 = copy.deepcopy(cyld_0).translate(np.array([0.5773*scale, -0.5773*scale, 0]))
-	cyld_6 = copy.deepcopy(cyld_0).translate(np.array([0.5773*scale, 0.5773*scale, 0]))
+	cyld_0.rotate(
+		cyld_0.get_rotation_matrix_from_xyz(np.array([0,pi/2,0])), center=[0,0,0])
+	cyld_5 = copy.deepcopy(cyld_0).translate(np.array([0, 0.5*scale, 0.7*scale]))
+	cyld_6 = copy.deepcopy(cyld_0).translate(np.array([0,-0.5*scale, 0.7*scale]))
 	
+	cyld_0 = o3d.geometry.TriangleMesh.create_cylinder(radius=0.01*scale, height=1*scale)
+	cyld_0.paint_uniform_color([0,0,0])
 	cyld_0.rotate(
 		cyld_0.get_rotation_matrix_from_xyz(np.array([pi/2,0,0])), center=[0,0,0])
-	cyld_7 = copy.deepcopy(cyld_0).translate(np.array([0.5773*scale,0, -0.5773*scale]))
-	cyld_8 = copy.deepcopy(cyld_0).translate(np.array([0.5773*scale, 0,0.5773*scale]))
+	cyld_7 = copy.deepcopy(cyld_0).translate(np.array([ 0.5*scale, 0, 0.7*scale]))
+	cyld_8 = copy.deepcopy(cyld_0).translate(np.array([-0.5*scale, 0, 0.7*scale]))
 	
 	mesh += [cyld_5, cyld_6, cyld_7, cyld_8]
 
+	# apply frame rotation 
+	for m in mesh:
+		m.rotate(m.get_rotation_matrix_from_quaternion(q), center=(0,0,0))
+	# apply frame translation
 	for m in mesh:
 		m.translate(np.array(origin), relative=True)
 	return mesh
 
-def draw_plane(corners, nh, nw, color=[0,0,1]):
-	top_right, top_left, bottom_right, bottom_left = corners
-	top = np.linspace(top_right, top_left, nw)
-	bottom = np.linspace(bottom_right, bottom_left, nw)
-	right = np.linspace(top_right, bottom_right, nh)
-	left = np.linspace(top_left, bottom_left, nh)
-
-	lines = [[i, i+nw] for i in range(nw)] + [[2*nw+i, 2*nw+i+nh] for i in range(nh)]
-	coord = np.concatenate([top, bottom, right, left], axis=0)
-	colors = [color for i in range(2*nw+2*nh)]
-	line_plane = o3d.geometry.LineSet(
-	    points=o3d.utility.Vector3dVector(coord),
-	    lines=o3d.utility.Vector2iVector(lines),
-	)
-	line_plane.colors = o3d.utility.Vector3dVector(colors)
-	return line_plane
-
-# cam_frame = draw_frame(scale=0.3)
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 pcd_file = os.path.join(ROOT, 'corn.pcd')
@@ -91,27 +80,41 @@ pcd = pcd.crop(o3d.geometry.AxisAlignedBoundingBox(np.array([-0, -100, -100]),
 # o3d.visualization.draw_geometries([pcd, cam_frame])
             
 # draw two cameras
-cam_frame_1 = draw_frame(origin=[0, -0.5, 0], q=[0.506, -0.495, 0.500, -0.498], scale=0.1)
-cam1 = draw_camera(origin=[0, -0.5, 0], scale=0.2)
+cam1 = draw_camera(origin=[0, -0.5, 0], q=[0.506, -0.495, 0.500, -0.498])
+cam2 = draw_camera(origin=[-0.1, -0.3, 0.1], q=[-0.383, 0.924, 0.006, 0.002])
+cam3 = draw_camera(origin=[-0.1, -0.65, 0.1], q=[0.5, 0.5, 0.5, -0.5])
+# cam_frame_2 = draw_frame(origin=[-0.05, -0.3, 0.02], q=[1, 0, 0, 0], scale=0.1)
+# cam2 = draw_camera(origin=[-0.05, -0.3, 0.02], scale=0.2)
 
-cam_frame_2 = draw_frame(origin=[-0.05, -0.3, 0.02], q=[0.506, -0.495, 0.500, -0.498], scale=0.1)
-cam2 = draw_camera(origin=[-0.05, -0.3, 0.02], scale=0.2)
-
-# draw corn plane
-corners = [[0.42, 0.1, 0.25],
-		   [0.5, -0.85, 0.25],
-		   [0.42, 0.1, -0.1],
-		   [0.5, -0.85, -0.1]]
-line_plane = draw_plane(corners, 10, 20)
-
-# draw corn 
-# o3d.visualization.draw_geometries([pcd, cam_frame_1, cam_frame_2, line_plane] + cam1 + cam2)
 
 alpha = 0.006
 mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_alpha_shape(pcd, alpha)
-m = [cam_frame_1, cam_frame_2] + cam1 + cam2
+# m = [cam_frame_1, cam_frame_2] + cam1 + cam2
+m = cam1 + cam2 + cam3
 for item in m:
 	mesh += item
-# o3d.visualization.draw_geometries([mesh], mesh_show_back_face=True)
+o3d.visualization.draw_geometries([mesh], mesh_show_back_face=True)
 
-o3d.io.write_triangle_mesh("corn_side_view.obj", mesh)
+o3d.io.write_triangle_mesh("corn_concept.ply", mesh)
+
+
+# # ======================    front rgbd  ===================
+# front_pcd_file = os.path.join(ROOT, 'front.pcd')
+# front_pcd = o3d.io.read_point_cloud(front_pcd_file)
+# front_pcd.rotate(front_pcd.get_rotation_matrix_from_quaternion(
+# 					np.array([0.9238795,0, -0.3826834, 0])), center=[0,0,0])
+# front_pcd = front_pcd.crop(o3d.geometry.AxisAlignedBoundingBox(np.array([-0.2, -0.6, -6]), 
+#                   			                                   np.array([1, 0.6, -1.5])))
+# cam1 = draw_camera(origin=[0, 0, 0], q=[1,0,0,0])
+# o3d.visualization.draw_geometries([front_pcd]+cam1)
+# o3d.io.write_point_cloud("front.ply", front_pcd)
+
+# # ======================    back rgbd  ===================
+# back_pcd_file = os.path.join(ROOT, 'back.pcd')
+# back_pcd = o3d.io.read_point_cloud(back_pcd_file)
+# o3d.visualization.draw_geometries([back_pcd])
+# alpha = 0.02
+# back_mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_alpha_shape(back_pcd, alpha)
+# o3d.visualization.draw_geometries([back_mesh], mesh_show_back_face=True)
+# o3d.io.write_triangle_mesh("back.ply", back_mesh)
+
