@@ -19,7 +19,7 @@ def draw_frame(origin=[0,0,0], q=[1,0,0,0], scale=1):
 def draw_camera(origin=[0,0,0], q=[1,0,0,0], scale=0.13):
 	# draw original camera aixs
 	axis = draw_frame([0,0,0], [1,0,0,0], scale=0.5*scale)
-	mesh = [axis]
+	mesh = axis
 
 	# draw the original camera frame
 	cyld_0 = o3d.geometry.TriangleMesh.create_cylinder(radius=0.01*scale, height=scale)
@@ -34,7 +34,8 @@ def draw_camera(origin=[0,0,0], q=[1,0,0,0], scale=0.13):
 	cyld_4 = copy.deepcopy(cyld_0).rotate(
 			cyld_0.get_rotation_matrix_from_zyx(np.array([-pi/4, -pi/4,0])), center=[0,0,0])
 
-	mesh += [cyld_1, cyld_2, cyld_3, cyld_4]
+	for m in [cyld_1, cyld_2, cyld_3, cyld_4]: 
+		mesh += m
 
 	cyld_0 = o3d.geometry.TriangleMesh.create_cylinder(radius=0.01*scale, height=1*scale)
 	cyld_0.paint_uniform_color([0,0,0])
@@ -50,14 +51,13 @@ def draw_camera(origin=[0,0,0], q=[1,0,0,0], scale=0.13):
 	cyld_7 = copy.deepcopy(cyld_0).translate(np.array([ 0.5*scale, 0, 0.7*scale]))
 	cyld_8 = copy.deepcopy(cyld_0).translate(np.array([-0.5*scale, 0, 0.7*scale]))
 	
-	mesh += [cyld_5, cyld_6, cyld_7, cyld_8]
+	for m in [cyld_5, cyld_6, cyld_7, cyld_8]:
+		mesh +=  m
 
 	# apply frame rotation 
-	for m in mesh:
-		m.rotate(m.get_rotation_matrix_from_quaternion(q), center=(0,0,0))
+	mesh.rotate(mesh.get_rotation_matrix_from_quaternion(q), center=(0,0,0))
 	# apply frame translation
-	for m in mesh:
-		m.translate(np.array(origin), relative=True)
+	mesh.translate(np.array(origin), relative=True)
 
 	return mesh
 
@@ -90,7 +90,7 @@ cam3 = draw_camera(origin=[-0.1, -0.65, 0.1], q=[0.5, 0.5, 0.5, -0.5])
 
 alpha = 0.006
 mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_alpha_shape(pcd, alpha)
-o3d.visualization.draw_geometries([mesh] + cam1 + cam2 + cam3, mesh_show_back_face=True)
+o3d.visualization.draw_geometries([mesh, cam1, cam2, cam3], mesh_show_back_face=True)
 
 o3d.io.write_triangle_mesh("corn_concept.ply", mesh)
 cam0 = draw_camera()
