@@ -98,6 +98,7 @@ front_pcd.rotate(front_pcd.get_rotation_matrix_from_quaternion(
 					np.array([0.9990482, -0.0436194, 0, 0])), center=[0,0,0])
 front_pcd = front_pcd.crop(o3d.geometry.AxisAlignedBoundingBox(np.array([-0.6, -0.15, 0.5]), 
                   			                                   np.array([0.6, 0.6, 6])))
+front_pcd.translate(np.array([0,0,10]), relative=True)
 cam1 = draw_camera(origin=[0, 0, 0], q=[1,0,0,0])
 o3d.visualization.draw_geometries([front_pcd]+cam1)
 o3d.io.write_point_cloud("front.ply", front_pcd)
