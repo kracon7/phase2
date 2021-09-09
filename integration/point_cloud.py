@@ -11,6 +11,9 @@ class PointCloud():
         '''
         merge new point array into existing point cloud
         '''
+        if new_colors.dtype == 'uint8':
+            new_colors = new_colors.astype('float') / 255
+            
         if self.point_cloud is None:
             self.point_cloud = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(new_points))
             self.point_cloud.colors = o3d.utility.Vector3dVector(new_colors)
