@@ -91,18 +91,20 @@ class MOT_Tracker():
                 color = colors[int(obj_id) % len(colors)]
                 color = [i * 255 for i in color]
                 cls = self.CLASS_NAMES[int(cls_pred)]
-                cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), color, 4)
+                drawn_img = cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), color, 4)
                 # cv2.rectangle(frame, (int(x1), int(y1)-35), (int(x1)+len(cls)*19+60, int(y1)), color, -1)
                 # cv2.putText(frame, cls + "-" + str(int(obj_id)), (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 3)
-                cv2.rectangle(img, (int(x1), int(y2)-35),
+                drawn_img = cv2.rectangle(drawn_img, (int(x1), int(y2)-35),
                               (int(x1)+len(cls)*19+60, int(y2)), color, -1)
-                cv2.putText(img, cls + "-" + str(int(obj_id)), (int(x1),
+                drawn_img = cv2.putText(drawn_img, cls + "-" + str(int(obj_id)), (int(x1),
                             int(y2) - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 3)
                 corn_id_bbox[int(obj_id)] = [tuple((int(x1), int(y1))), tuple((int(x2), int(y2)))]
         self.corn_id_bbox_dict[self.frame_number] = corn_id_bbox
         self.frame_number +=1
 
-        cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
-        cv2.imshow("frame", img)
+        # cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
+        # cv2.imshow("frame", drawn_img)
+        # if cv2.waitKey(1) >= 0:  # Break with ESC
+        #     break
 
         return corn_id_bbox

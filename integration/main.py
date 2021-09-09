@@ -86,5 +86,6 @@ for i in range(1, num_frames):
         points = side_pcd.depth_to_points(frame.side_depth, plane_estimator.K)
         points_map = side_pcd.transform_side_to_map(points, frame.pose)
         side_pcd.merge(points_map, frame.side_color.reshape(-1,3))
-        side_pcd.save_as_mesh('side_view.ply')
+        o3d.io.write_point_cloud('side_view.pcd', side_pcd.point_cloud)
+        # side_pcd.save_as_mesh('side_view.ply')
 

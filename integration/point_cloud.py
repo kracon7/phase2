@@ -3,9 +3,10 @@ import open3d as o3d
 from scipy.spatial.transform import Rotation as R
 
 class PointCloud():
-    def __init__(self):
+    def __init__(self, vis=False):
         self.point_cloud = None
         self.voxel_size = 0.005
+        self.visualize = vis
 
     def merge(self, new_points, new_colors):
         '''
@@ -29,9 +30,13 @@ class PointCloud():
 
             self.point_cloud.voxel_down_sample(voxel_size=self.voxel_size)
 
-    def save_as_mesh(self, fpath, alpha=0.006):
+        if self.visualize:
+            o3d.visualization.draw_geometries([self.point_cloud])
+
+    def save_as_mesh(self, fpath, alpha=0.01):
         mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_alpha_shape(
                             self.point_cloud, alpha)
+        o3d.visualization.draw_geometries([mesh])
         o3d.io.write_triangle_mesh(fpath, mesh)
 
     def transform_side_to_map(self, points, pose):
@@ -42,7 +47,9 @@ class PointCloud():
         '''
         p1, q1 = pose[:3], pose[3:]
         R1 = R.from_quat([q1[1], q1[2], q1[3], q1[0]]).as_matrix()
-        rot, C = R1.T, -R1.T @ p1
+        # rot, C = R1.T, -R1.T @ p1
+
+        rot, C = R1, p1
 
         new_points = points @ rot.T + C
         return new_points
