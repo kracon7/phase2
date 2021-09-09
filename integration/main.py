@@ -9,11 +9,14 @@ import matplotlib.pyplot as plt
 from scipy.spatial import cKDTree
 from scipy.spatial.transform import Rotation as R
 from pathlib import Path
+from collections import defaultdict
 
 import torch
 import torchvision.transforms as T
 import argparse
 from plane_estimation import PlaneEstimator
+from corn_tracker import MOT_Tracker
+from localization import *
 
 plt.ion()
 
@@ -35,7 +38,6 @@ class Frame():
         self.stamp = stamp
         self.pose = pose
 
-
 CLASS_NAMES = ["__background__", "corn_stem"]
 ROOT = os.path.dirname(os.path.abspath(__file__))
 HOME = str(Path.home())
@@ -50,17 +52,34 @@ front_color_dir = os.path.join(data_dir, 'front_color')
 side_color_dir = os.path.join(data_dir, 'side_color')
 
 plane_estimator = PlaneEstimator(args, model)
+tracker = MOT_Tracker(args, model)
+history = defaultdict(list)
 
 ################ MAIN LOOP, READ FRAMES ONE BY ONE  ###############
 num_frames = len(os.listdir(frame_dir))
 print("Found %d frames, start loading now....")
 
 for i in range(1, num_frames):
-	frame = pickle.load(open(os.path.join(frame_dir, 'frame_%07d.pkl'%(i)), 'rb'))
-	print('Loaded frame number %d'%i)
+    frame = pickle.load(open(os.path.join(frame_dir, 'frame_%07d.pkl'%(i)), 'rb'))
+    print('Loaded frame number %d'%i)
 
-	plane_estimator.update(frame)
-	# frame1 = pickle.load(open(os.path.join(frame_dir, 'frame_%07d.pkl'%(i)), 'rb'))
-	# frame2 = pickle.load(open(os.path.join(frame_dir, 'frame_%07d.pkl'%(i+20)), 'rb'))
+    # estimate plane
+    plane_estimator.update(frame)
 
-	# plane_estimator.process_frames(frame1, frame2)
+    # frame1 = pickle.load(open(os.path.join(frame_dir, 'frame_%07d.pkl'%(i)), 'rb'))
+    # frame2 = pickle.load(open(os.path.join(frame_dir, 'frame_%07d.pkl'%(i+20)), 'rb'))
+    # plane_estimator.process_frames(frame1, frame2)
+    
+    # update tracker
+    corn_id_bbox = tracker.corn_tracking_sort(frame.side_color)
+
+    # use bbox and plane to find 3D position
+    if plane_estimator.d_plane is not None:
+        loc_3d = compute_loc_3d([0,0,1,plane_estimator.d_plane], [0,1,0,-0.1], 
+                        corn_id_bbox, plane_estimator.K)
+
+        merge_measurements(history, loc_3d, frame.pose)
+
+        print(history)
+
+    # ToDo Kalman filter to update 3D positions

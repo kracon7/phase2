@@ -6,9 +6,8 @@ import datetime
 import random
 import torch
 from torch.utils.data import DataLoader
-from torchvision import datasets, transforms
+import torchvision.transforms as Transforms
 from torch.autograd import Variable
-import torchvision.transforms as T
 from imutils.video import FPS
 
 import matplotlib.pyplot as plt
@@ -24,10 +23,7 @@ import argparse
 cmap = plt.get_cmap('tab20b')
 colors = [cmap(i)[:3] for i in np.linspace(0, 1, 20)]
 
-mot_tracker = Sort()
-fps = FPS().start()
-
-CLASS_NAMES = ["__background__", "corn_stem"]
+# fps = FPS().start()
 
 class MOT_Tracker():
     def __init__(self, args, rcnn_model):
@@ -38,6 +34,8 @@ class MOT_Tracker():
         self.torch_trans = Transforms.Compose([Transforms.ToTensor()])
         
         self.mot_tracker = Sort()   
+        self.frame_number = 1
+        self.corn_id_bbox_dict = dict()
 
     def get_prediction(self, img, confidence=0.5):
         """
@@ -71,48 +69,40 @@ class MOT_Tracker():
 
 
     def corn_tracking_sort(self, img):
-        corn_id_bbox_dict = dict()
+        
         pred_boxes, pred_class, pred_score = self.get_prediction(img, 0.8)
-            detections_list = []
-            for i in range(len(pred_score)):
-                detections_list.append([pred_boxes[i][0][0], pred_boxes[i][0][1], pred_boxes[i]
-                                       [1][0], pred_boxes[i][1][1], pred_score[i], pred_score[i], 1])
+        
+        detections_list = []
+        for i in range(len(pred_score)):
+            detections_list.append([pred_boxes[i][0][0], pred_boxes[i][0][1], pred_boxes[i]
+                                   [1][0], pred_boxes[i][1][1], pred_score[i], pred_score[i], 1])
 
-            detections = torch.FloatTensor(detections_list)
+        detections = torch.FloatTensor(detections_list)
 
-            
-            if detections is not None:
-                tracked_objects = mot_tracker.update(detections.cpu())
+        
+        if detections is not None:
+            tracked_objects = self.mot_tracker.update(detections.cpu())
 
-                # n_cls_preds = len(unique_labels)
-                n_cls_preds = 2
+            # n_cls_preds = len(unique_labels)
+            n_cls_preds = 2
 
-                corn_id_bbox = dict()
-                for x1, y1, x2, y2, obj_id, cls_pred in tracked_objects:
-                    color = colors[int(obj_id) % len(colors)]
-                    color = [i * 255 for i in color]
-                    cls = CLASS_NAMES[int(cls_pred)]
-                    cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), color, 4)
-                    # cv2.rectangle(frame, (int(x1), int(y1)-35), (int(x1)+len(cls)*19+60, int(y1)), color, -1)
-                    # cv2.putText(frame, cls + "-" + str(int(obj_id)), (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 3)
-                    cv2.rectangle(frame, (int(x1), int(y2)-35),
-                                  (int(x1)+len(cls)*19+60, int(y2)), color, -1)
-                    cv2.putText(frame, cls + "-" + str(int(obj_id)), (int(x1),
-                                int(y2) - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 3)
-                    corn_id_bbox[int(obj_id)] = [tuple((int(x1), int(y1))), tuple((int(x2), int(y2)))]
-            corn_id_bbox_dict[frame_number] = corn_id_bbox
-            frame_number +=1
+            corn_id_bbox = dict()
+            for x1, y1, x2, y2, obj_id, cls_pred in tracked_objects:
+                color = colors[int(obj_id) % len(colors)]
+                color = [i * 255 for i in color]
+                cls = self.CLASS_NAMES[int(cls_pred)]
+                cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), color, 4)
+                # cv2.rectangle(frame, (int(x1), int(y1)-35), (int(x1)+len(cls)*19+60, int(y1)), color, -1)
+                # cv2.putText(frame, cls + "-" + str(int(obj_id)), (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 3)
+                cv2.rectangle(img, (int(x1), int(y2)-35),
+                              (int(x1)+len(cls)*19+60, int(y2)), color, -1)
+                cv2.putText(img, cls + "-" + str(int(obj_id)), (int(x1),
+                            int(y2) - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 3)
+                corn_id_bbox[int(obj_id)] = [tuple((int(x1), int(y1))), tuple((int(x2), int(y2)))]
+        self.corn_id_bbox_dict[self.frame_number] = corn_id_bbox
+        self.frame_number +=1
 
-            fps.update()
-            fps.stop()
-            print("[INFO] approx. FPS: {:.2f}".format(fps.fps()))
+        cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
+        cv2.imshow("frame", img)
 
-            if output_file:
-                writer.write(frame)
-
-            cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
-            cv2.imshow("frame", frame)
-            # prev_frame = frame
-            if cv2.waitKey(1) >= 0:  # Break with ESC
-                break
-      return corn_id_bbox_dict
+        return corn_id_bbox

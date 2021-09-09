@@ -29,6 +29,8 @@ class PlaneEstimator():
         self.rays = np.dot(np.insert(points, 2, 1, axis=1), np.linalg.inv(self.K).T).reshape(self.im_h, self.im_w, 3)
         # intrinsic matrix for realsense d435 480 x 848
 
+        self.d_plane = None
+
     def get_rel_trans(self, pose1, pose2):
         '''
         Compute the relative transformation between frame1 and frame2
