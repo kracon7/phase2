@@ -55,16 +55,24 @@ side_color_dir = os.path.join(data_dir, 'side_color')
 
 plane_estimator = PlaneEstimator(args, model)
 tracker = MOT_Tracker(args, model)
-side_pcd = PointCloud(vis=True)
+side_pcd = PointCloud(vis=False)
 history = defaultdict(list)
 
 ################ MAIN LOOP, READ FRAMES ONE BY ONE  ###############
 num_frames = len(os.listdir(frame_dir))
 print("Found %d frames, start loading now....")
 
+num_frames = 220
+
 for i in range(1, num_frames):
     frame = pickle.load(open(os.path.join(frame_dir, 'frame_%07d.pkl'%(i)), 'rb'))
     print('Loaded frame number %d'%i)
+
+    # # merge pointcloud every 5 frames
+    # if i % 20 == 1:
+    #     points, mask = side_pcd.depth_to_points(frame.side_depth, plane_estimator.K)
+    #     side_pcd.merge(points[mask], frame.side_color.reshape(-1,3)[mask], frame.pose)
+    #     o3d.io.write_point_cloud('side_view.pcd', side_pcd.point_cloud)
 
     # estimate plane
     plane_estimator.update(frame)
@@ -72,19 +80,16 @@ for i in range(1, num_frames):
     # update tracker
     corn_id_bbox = tracker.corn_tracking_sort(frame.side_color)
 
+    if cv2.waitKey(1) >= 0:  # Break with ESC
+        break
+
     # use bbox and plane to find 3D position
     if plane_estimator.d_plane is not None:
         loc_3d = compute_loc_3d([0,0,1,plane_estimator.d_plane], [0,1,0,-0.1], 
                         corn_id_bbox, plane_estimator.K)
 
-        merge_measurements(history, loc_3d, frame.pose)
+        merge_measurements(history, loc_3d, frame.pose, side_pcd.pose0)
 
-        print(history)
+    # print(history[1])
 
-    # merge pointcloud every 5 frames
-    if i % 5 == 1:
-        points = side_pcd.depth_to_points(frame.side_depth, plane_estimator.K)
-        side_pcd.merge(points, frame.side_color.reshape(-1,3), frame.pose)
-        o3d.io.write_point_cloud('side_view.pcd', side_pcd.point_cloud)
-        # side_pcd.save_as_mesh('side_view.ply')
-
+pickle.dump(history, open('history.pkl', 'wb'))

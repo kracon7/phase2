@@ -87,11 +87,12 @@ class MOT_Tracker():
             n_cls_preds = 2
 
             corn_id_bbox = dict()
+            drawn_img = img.copy()
             for x1, y1, x2, y2, obj_id, cls_pred in tracked_objects:
                 color = colors[int(obj_id) % len(colors)]
                 color = [i * 255 for i in color]
                 cls = self.CLASS_NAMES[int(cls_pred)]
-                drawn_img = cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), color, 4)
+                drawn_img = cv2.rectangle(drawn_img, (int(x1), int(y1)), (int(x2), int(y2)), color, 4)
                 # cv2.rectangle(frame, (int(x1), int(y1)-35), (int(x1)+len(cls)*19+60, int(y1)), color, -1)
                 # cv2.putText(frame, cls + "-" + str(int(obj_id)), (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 3)
                 drawn_img = cv2.rectangle(drawn_img, (int(x1), int(y2)-35),
@@ -103,7 +104,9 @@ class MOT_Tracker():
         self.frame_number +=1
 
         # cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
-        # cv2.imshow("frame", drawn_img)
+        cv2.imshow("frame", drawn_img)
+        time.sleep(0.1)
+        # cv2.waitKey(0)
         # if cv2.waitKey(1) >= 0:  # Break with ESC
         #     break
 

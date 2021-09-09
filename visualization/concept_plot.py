@@ -22,8 +22,9 @@ def draw_camera(origin=[0,0,0], q=[1,0,0,0], scale=0.13):
 	mesh = axis
 
 	# draw the original camera frame
+	color = [0.8,0.4,0.01]
 	cyld_0 = o3d.geometry.TriangleMesh.create_cylinder(radius=0.01*scale, height=scale)
-	cyld_0.paint_uniform_color([0,0,0])
+	cyld_0.paint_uniform_color(color)
 	cyld_0.translate(np.array([0,0,scale/2]))
 	cyld_1 = copy.deepcopy(cyld_0).rotate(
 			cyld_0.get_rotation_matrix_from_zyx(np.array([pi/4, pi/4,0])), center=[0,0,0])
@@ -38,14 +39,14 @@ def draw_camera(origin=[0,0,0], q=[1,0,0,0], scale=0.13):
 		mesh += m
 
 	cyld_0 = o3d.geometry.TriangleMesh.create_cylinder(radius=0.01*scale, height=1*scale)
-	cyld_0.paint_uniform_color([0,0,0])
+	cyld_0.paint_uniform_color(color)
 	cyld_0.rotate(
 		cyld_0.get_rotation_matrix_from_xyz(np.array([0,pi/2,0])), center=[0,0,0])
 	cyld_5 = copy.deepcopy(cyld_0).translate(np.array([0, 0.5*scale, 0.7*scale]))
 	cyld_6 = copy.deepcopy(cyld_0).translate(np.array([0,-0.5*scale, 0.7*scale]))
 	
 	cyld_0 = o3d.geometry.TriangleMesh.create_cylinder(radius=0.01*scale, height=1*scale)
-	cyld_0.paint_uniform_color([0,0,0])
+	cyld_0.paint_uniform_color(color)
 	cyld_0.rotate(
 		cyld_0.get_rotation_matrix_from_xyz(np.array([pi/2,0,0])), center=[0,0,0])
 	cyld_7 = copy.deepcopy(cyld_0).translate(np.array([ 0.5*scale, 0, 0.7*scale]))

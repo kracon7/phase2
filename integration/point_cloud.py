@@ -17,9 +17,9 @@ def draw_frame(origin=[0,0,0], q=[1,0,0,0], scale=1):
 
 
 class PointCloud():
-    def __init__(self, vis=False):
+    def __init__(self, voxel_size=0.01, vis=False):
         self.point_cloud = None
-        self.voxel_size = 0.005
+        self.voxel_size = voxel_size
         self.visualize = vis
         self.cam_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.15)
 
@@ -87,12 +87,14 @@ class PointCloud():
         new_points = points @ rot.T + C
         return new_points
 
-    def depth_to_points(self, depth, K):
+    def depth_to_points(self, depth, K, clamp=1):
         im_h, im_w = depth.shape
         x, y = np.arange(im_w), np.arange(im_h)
         xx, yy = np.meshgrid(x, y)
         points = np.stack([xx, yy], axis=2).reshape(-1,2)
         rays = np.dot(np.insert(points, 2, 1, axis=1), np.linalg.inv(K).T).reshape(im_h, im_w, 3)
         points = rays * depth.reshape(im_h, im_w, 1)
-        return points.reshape(-1,3)
+
+        mask = ((depth < clamp) & (depth > 0)).reshape(-1)
+        return points.reshape(-1,3), mask
 
