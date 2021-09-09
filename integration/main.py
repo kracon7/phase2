@@ -55,7 +55,7 @@ side_color_dir = os.path.join(data_dir, 'side_color')
 
 plane_estimator = PlaneEstimator(args, model)
 tracker = MOT_Tracker(args, model)
-side_pcd = PointCloud()
+side_pcd = PointCloud(vis=True)
 history = defaultdict(list)
 
 ################ MAIN LOOP, READ FRAMES ONE BY ONE  ###############
@@ -84,8 +84,7 @@ for i in range(1, num_frames):
     # merge pointcloud every 5 frames
     if i % 5 == 1:
         points = side_pcd.depth_to_points(frame.side_depth, plane_estimator.K)
-        points_map = side_pcd.transform_side_to_map(points, frame.pose)
-        side_pcd.merge(points_map, frame.side_color.reshape(-1,3))
+        side_pcd.merge(points, frame.side_color.reshape(-1,3), frame.pose)
         o3d.io.write_point_cloud('side_view.pcd', side_pcd.point_cloud)
         # side_pcd.save_as_mesh('side_view.ply')
 
