@@ -17,6 +17,7 @@ import argparse
 from plane_estimation import PlaneEstimator
 from corn_tracker import MOT_Tracker
 from localization import *
+from point_cloud import PointCloud
 
 plt.ion()
 
@@ -31,10 +32,11 @@ args = parser.parse_args()
 
 class Frame():
     """sync-ed frame for side and front view"""
-    def __init__(self, front_color, front_depth, side_color, stamp, pose):
+    def __init__(self, front_color, front_depth, side_color, side_depth, stamp, pose):
         self.front_color = front_color
         self.front_depth = front_depth
         self.side_color = side_color
+        self.side_depth = side_depth
         self.stamp = stamp
         self.pose = pose
 
@@ -53,6 +55,7 @@ side_color_dir = os.path.join(data_dir, 'side_color')
 
 plane_estimator = PlaneEstimator(args, model)
 tracker = MOT_Tracker(args, model)
+side_pcd = PointCloud()
 history = defaultdict(list)
 
 ################ MAIN LOOP, READ FRAMES ONE BY ONE  ###############
@@ -66,10 +69,6 @@ for i in range(1, num_frames):
     # estimate plane
     plane_estimator.update(frame)
 
-    # frame1 = pickle.load(open(os.path.join(frame_dir, 'frame_%07d.pkl'%(i)), 'rb'))
-    # frame2 = pickle.load(open(os.path.join(frame_dir, 'frame_%07d.pkl'%(i+20)), 'rb'))
-    # plane_estimator.process_frames(frame1, frame2)
-    
     # update tracker
     corn_id_bbox = tracker.corn_tracking_sort(frame.side_color)
 
@@ -82,4 +81,10 @@ for i in range(1, num_frames):
 
         print(history)
 
-    # ToDo Kalman filter to update 3D positions
+    # merge pointcloud every 5 frames
+    if i % 5 == 1:
+        points = side_pcd.depth_to_points(frame.side_depth, plane_estimator.K)
+        points_map = side_pcd.transform_side_to_map(points, frame.pose)
+        side_pcd.merge(points_map, frame.side_color.reshape(-1,3))
+        side_pcd.save_as_mesh('side_view.ply')
+
