@@ -33,20 +33,15 @@ from point_cloud import PointCloud
 plt.ion()
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-m", "--model", default="model/faster-rcnn-corn_bgr8_ep100.pt",
-                help="path to the model")
-parser.add_argument("-c", "--confidence", type=float, default=0.8, 
-                help="confidence to keep predictions")
-parser.add_argument("-d", "--data_dir", default="tmp/offline_frames")
+parser.add_argument("-p", "--pcd_path", 
+                    default="/home/jc/tmp/phase2_visualization/side_view.pcd")
+parser.add_argument("-l", "--history_path", 
+                    default="/home/jc/jiacheng/phase2/integration/history.pkl")
 args = parser.parse_args()
 
-history = pickle.load(open('history.pkl', 'wb'))
+history = pickle.load(open(args.l, 'wb'))
 
 cam_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.15)
-pcd = o3d.io.read_point_cloud('side_view.pcd')
-pcd.rotate(pcd.get_rotation_matrix_from_zyx(np.array([0, 0.09,0])), center=[0,0,0])
-pcd = pcd.crop(o3d.geometry.AxisAlignedBoundingBox(np.array([-100, -100, 0]), 
-                                                   np.array([100, 100, 0.49])))
-pcd.rotate(pcd.get_rotation_matrix_from_zyx(np.array([0, -0.09,0])), center=[0,0,0])
+pcd = o3d.io.read_point_cloud(args.p)
 
 # average history to compute target positions
