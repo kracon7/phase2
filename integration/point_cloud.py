@@ -17,7 +17,7 @@ def draw_frame(origin=[0,0,0], q=[1,0,0,0], scale=1):
 
 
 class PointCloud():
-    def __init__(self, voxel_size=0.01, vis=False):
+    def __init__(self, voxel_size=0.005, vis=False):
         self.point_cloud = None
         self.voxel_size = voxel_size
         self.visualize = vis
