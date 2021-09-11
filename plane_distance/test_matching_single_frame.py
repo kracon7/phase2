@@ -2,6 +2,8 @@ import os
 import sys
 import numpy as np
 import cv2
+import pickle
+from pathlib import Path
 import matplotlib.pyplot as plt
 from scipy.spatial import cKDTree
 from scipy.spatial.transform import Rotation as R
@@ -90,8 +92,8 @@ def get_rel_trans(frame1, frame2):
     Output
         T -- transformation matrix from frame2 to frame1
     '''
-    trans1 = frame1['transform']
-    trans2 = frame2['transform']
+    trans1 = frame1.pose
+    trans2 = frame2.pose
     p1, q1 = trans1[:3], trans1[3:]
     p2, q2 = trans2[:3], trans2[3:]
     R1 = R.from_quat([q1[1], q1[2], q1[3], q1[0]]).as_matrix()
@@ -103,7 +105,7 @@ def get_rel_trans(frame1, frame2):
     T = T_2_map @ T_map_1
     return T
 
-def get_bbox(model, frame, confidence=0.8):
+def get_bbox(model, img, confidence=0.8):
     '''
     Get the bounding box for side view corn detection
     Input
@@ -113,7 +115,7 @@ def get_bbox(model, frame, confidence=0.8):
         bbox -- list object, bounding box position and sise
     '''
     transform = T.Compose([T.ToTensor()])
-    img = transform(frame['side_color']).to(device)
+    img = transform(img).to(device)
     pred = model([img])
     pred_class = [CLASS_NAMES[i] for i in list(pred[0]['labels'].cpu().numpy())]
     pred_boxes = [[(i[0], i[1]), (i[2], i[3])] for i in list(pred[0]['boxes'].detach().cpu().numpy())]
@@ -250,22 +252,39 @@ def draw_side_plane(img, K, R, d_plane, d_ground, color=(255,255,0)):
     return drawn_img
 
 
+class Frame():
+    """sync-ed frame for side and front view"""
+    def __init__(self, front_color, front_depth, side_color, side_depth, stamp, pose):
+        self.front_color = front_color
+        self.front_depth = front_depth
+        self.side_color = side_color
+        self.side_depth = side_depth
+        self.stamp = stamp
+        self.pose = pose
+
+
 parser = argparse.ArgumentParser()
 parser.add_argument("-m", "--model", default="model/faster-rcnn-corn_bgr8_ep100.pt",
                 help="path to the model")
 parser.add_argument("-c", "--confidence", type=float, default=0.8, 
                 help="confidence to keep predictions")
+parser.add_argument("-d", "--data_dir", default="tmp/offline_frames")
 args = parser.parse_args()
 
 CLASS_NAMES = ["__background__", "corn_stem"]
 ROOT = os.path.dirname(os.path.abspath(__file__))
+HOME = str(Path.home())
 
-frame_idx_1 = 547
-frame_idx_2 = frame_idx_1 + 15
-data_dir = '/home/jc/tmp/pred_distance'
+data_dir = os.path.join(HOME, args.data_dir)
+frame_dir = os.path.join(data_dir, 'frame')
+front_color_dir = os.path.join(data_dir, 'front_color')
+side_color_dir = os.path.join(data_dir, 'side_color')
 
-frame1 = load_data(data_dir, frame_idx_1)
-frame2 = load_data(data_dir, frame_idx_2)
+frame_idx_1 = 10
+frame_idx_2 = frame_idx_1 + 30
+
+frame1 = pickle.load(open(os.path.join(frame_dir, 'frame_%07d.pkl'%(frame_idx_1)), 'rb'))
+frame2 = pickle.load(open(os.path.join(frame_dir, 'frame_%07d.pkl'%(frame_idx_2)), 'rb'))    
 
 rel_trans = get_rel_trans(frame1, frame2)
 
@@ -273,28 +292,30 @@ device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cp
 model = torch.load(os.path.join(ROOT, args.model))
 model.to(device)
 
-bbox1, pred_cls_1, pred_score_1 = get_bbox(model, frame1)
-bbox2, pred_cls_2, pred_score_2 = get_bbox(model, frame2)
+bbox1, pred_cls_1, pred_score_1 = get_bbox(model, frame1.side_color)
+bbox2, pred_cls_2, pred_score_2 = get_bbox(model, frame2.side_color)
 
-# # create orb descriptor function
-# orb = cv2.ORB_create()
-# kp1, des1 = orb.detectAndCompute(frame1['side_color'], None)
-# kp2, des2 = orb.detectAndCompute(frame2['side_color'], None)
+img1, img2 = frame1.side_color.copy(), frame2.side_color.copy()
+for box in bbox1:
+    img1 = cv2.rectangle(img1, (int(box[0][0]), int(box[0][1])),
+                               (int(box[1][0]), int(box[1][1])), (255, 255, 0), 3)
+for box in bbox2:
+    img2 = cv2.rectangle(img2, (int(box[0][0]), int(box[0][1])),
+                               (int(box[1][0]), int(box[1][1])), (255, 255, 0), 3)
 
 # create sift feature
 sift = cv2.SIFT_create()
 mask1 = bbox_to_mask(bbox1, 480, 848)
 mask2 = bbox_to_mask(bbox2, 480, 848)
-kp1, des1 = sift.detectAndCompute(frame1['side_color'], mask1)
-kp2, des2 = sift.detectAndCompute(frame2['side_color'], mask2)
+kp1, des1 = sift.detectAndCompute(frame1.side_color, mask1)
+kp2, des2 = sift.detectAndCompute(frame2.side_color, mask2)
 
-# visualize masked features
-img1 = cv2.drawKeypoints(frame1['side_color'], kp1, None, color=(0,255,0), flags=0)
-img2 = cv2.drawKeypoints(frame2['side_color'], kp2, None, color=(0,255,0), flags=0)
-img = np.concatenate([img1, img2], axis=0)
-plt.imshow(img)
-plt.show()
-
+# # visualize masked features
+# img1 = cv2.drawKeypoints(frame1.side_color, kp1, None, color=(0,255,0), flags=0)
+# img2 = cv2.drawKeypoints(frame2.side_color, kp2, None, color=(0,255,0), flags=0)
+# img = np.concatenate([img1, img2], axis=0)
+# plt.imshow(img)
+# plt.show()
 
 # match sift key points
 bf = cv2.BFMatcher()
@@ -305,25 +326,48 @@ for m,n in matches:
     if m.distance < 0.5*n.distance:
         good.append([m])
 
+src_kps = [ kp1[m[0].queryIdx] for m in good ]
+dst_kps = [ kp2[m[0].trainIdx] for m in good ]
+img1 = cv2.drawKeypoints(img1, src_kps, None, color=(255,0,0), flags=0)
+img2 = cv2.drawKeypoints(img2, dst_kps, None, color=(255,0,0), flags=0)
+
+canvas = 255 * np.ones([480, 848*2+20, 3], dtype='uint8')
+canvas[:,:848,:] = img1
+canvas[:,-848:,:] = img2
+
+# visualize matched pairs
 src_pts = np.float32([ kp1[m[0].queryIdx].pt for m in good ]).reshape(-1,2)
 dst_pts = np.float32([ kp2[m[0].trainIdx].pt for m in good ]).reshape(-1,2)  
-# visualize matched pairs
-img3 = cv2.drawMatchesKnn(frame1['side_color'], kp1, frame2['side_color'], kp2, 
-            good,None,flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
-plt.imshow(img3),plt.show()
+N = src_pts.shape[0]
+cmap = plt.cm.get_cmap('Spectral')
+colors = [cmap(i)    for i in np.linspace(0, 1, N)]
+for i in range(N):
+    pt1 = (int(src_pts[i,0]), int(src_pts[i,1]))
+    pt2 = (int(dst_pts[i,0]+848+20), int(dst_pts[i,1]))
+    color = (int(colors[i][0]*255), int(colors[i][1]*255), int(colors[i][2]*255))
+    canvas = cv2.line(canvas, pt1, pt2, color, 3)
+# plt.imshow(canvas)
+# plt.show()
 
-R, d_ground = find_ground_plane(frame1['front_rgbd'])
-ground_normal = R[2]
+cv2.imwrite('bbox_ft_matching.png', cv2.cvtColor(canvas, cv2.COLOR_RGB2BGR))
 
-K = np.array([[615.311279296875,   0.0,             430.1778869628906],
-              [  0.0,            615.4699096679688, 240.68307495117188],
-              [  0.0,              0.0,               1.0]])
 
-d_plane = estimate_distance_ransac(src_pts, dst_pts, K, rel_trans, ground_normal, 5, 10)
+# img3 = cv2.drawMatchesKnn(frame1.side_color, kp1, frame2.side_color, kp2, 
+#             good,None,flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+# plt.imshow(img3),plt.show()
 
-# draw grid in side view images
-d_ground_side = - d_ground - 0.099
-drawn_img = draw_side_plane(frame1['side_color'], K, R, d_plane, d_ground_side)
+# R, d_ground = find_ground_plane(frame1['front_rgbd'])
+# ground_normal = R[2]
 
-plt.imshow(drawn_img)
-plt.show()
+# K = np.array([[615.311279296875,   0.0,             430.1778869628906],
+#               [  0.0,            615.4699096679688, 240.68307495117188],
+#               [  0.0,              0.0,               1.0]])
+
+# d_plane = estimate_distance_ransac(src_pts, dst_pts, K, rel_trans, ground_normal, 5, 10)
+
+# # draw grid in side view images
+# d_ground_side = - d_ground - 0.099
+# drawn_img = draw_side_plane(frame1.side_color, K, R, d_plane, d_ground_side)
+
+# plt.imshow(drawn_img)
+# plt.show()

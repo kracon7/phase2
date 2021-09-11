@@ -259,21 +259,38 @@ def draw_side_plane(img, K, R, d_plane, d_ground, color=(255,255,0)):
     return drawn_img
 
 
+class Frame():
+    """sync-ed frame for side and front view"""
+    def __init__(self, front_color, front_depth, side_color, side_depth, stamp, pose):
+        self.front_color = front_color
+        self.front_depth = front_depth
+        self.side_color = side_color
+        self.side_depth = side_depth
+        self.stamp = stamp
+        self.pose = pose
+
+
 parser = argparse.ArgumentParser()
 parser.add_argument("-m", "--model", default="model/faster-rcnn-corn_bgr8_ep100.pt",
                 help="path to the model")
 parser.add_argument("-c", "--confidence", type=float, default=0.8, 
                 help="confidence to keep predictions")
+parser.add_argument("-d", "--data_dir", default="tmp/offline_frames")
 args = parser.parse_args()
 
 CLASS_NAMES = ["__background__", "corn_stem"]
 ROOT = os.path.dirname(os.path.abspath(__file__))
+HOME = str(Path.home())
+
+data_dir = os.path.join(HOME, args.data_dir)
+frame_dir = os.path.join(data_dir, 'frame')
+front_color_dir = os.path.join(data_dir, 'front_color')
+side_color_dir = os.path.join(data_dir, 'side_color')
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 model = torch.load(os.path.join(ROOT, args.model))
 model.to(device)
 
-data_dir = '/home/jc/tmp/pred_distance'
 output_dir = '/home/jc/tmp/sfm_drawn'
 dt = 15
 num_img = len(os.listdir(os.path.join(data_dir, 'side_color')))
