@@ -143,7 +143,7 @@ def main():
         if count % args.save_every == 0:
             cv_img = image_to_numpy(msg)
             # cv_img = bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
-            cv2.imwrite(os.path.join(args.output_dir, args.prefix+"frame%06i.png"%count), cv_img)
+            cv2.imwrite(os.path.join(args.output_dir, args.prefix+"frame%07i.png"%count), cv2.cvtColor(cv_img, cv2.COLOR_RGB2BGR))
             print("Wrote image %i" % count)
 
         count += 1
