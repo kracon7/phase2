@@ -80,7 +80,7 @@ if args.reconstruct:
     print("Found %d frames, start loading now....")
 
     i_start = 1
-    num_frames = 95
+    num_frames = 500
 
     for i in range(i_start, i_start+num_frames):
         frame = pickle.load(open(os.path.join(frame_dir, 'frame_%07d.pkl'%(i)), 'rb'))
