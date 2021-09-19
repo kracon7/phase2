@@ -66,8 +66,12 @@ i_start = 1
 num_frames = 700
 
 for i in range(i_start, i_start+num_frames):
-    frame = pickle.load(open(os.path.join(frame_dir, 'frame_%07d.pkl'%(i)), 'rb'))
-    print('Loaded frame number %d'%i)
+    try:
+        frame = pickle.load(open(os.path.join(frame_dir, 'frame_%07d.pkl'%(i)), 'rb'))
+        print('Loaded frame number %d'%i)
+
+    except:
+        frame = None
 
     # save pose0
     if i - i_start == 0:
@@ -95,6 +99,4 @@ for i in range(i_start, i_start+num_frames):
 
         merge_measurements(history, loc_3d, frame.pose, pose0)
 
-    # print(history[1])
-
-    pickle.dump(history, open('history.pkl', 'wb'))
+pickle.dump(history, open('history.pkl', 'wb'))
