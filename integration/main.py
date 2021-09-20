@@ -63,7 +63,7 @@ num_frames = len(os.listdir(frame_dir))
 print("Found %d frames, start loading now....")
 
 i_start = 1
-num_frames = 700
+num_frames = 500
 
 for i in range(i_start, i_start+num_frames):
     try:
@@ -73,30 +73,25 @@ for i in range(i_start, i_start+num_frames):
     except:
         frame = None
 
-    # save pose0
-    if i - i_start == 0:
-        pose0 = frame.pose
+    if frame:
+        # save pose0
+        if i - i_start == 0:
+            pose0 = frame.pose
 
-    # # merge pointcloud every 5 frames
-    # if (i-i_start) % 20 == 0:
-    #     points, mask = side_pcd.depth_to_points(frame.side_depth, plane_estimator.K)
-    #     side_pcd.merge(points[mask], frame.side_color.reshape(-1,3)[mask], frame.pose)
-    #     o3d.io.write_point_cloud('side_view.pcd', side_pcd.point_cloud)
+        # estimate plane
+        plane_estimator.update(frame)
 
-    # estimate plane
-    plane_estimator.update(frame)
+        # update tracker
+        corn_id_bbox = tracker.corn_tracking_sort(frame.side_color)
 
-    # update tracker
-    corn_id_bbox = tracker.corn_tracking_sort(frame.side_color)
+        if cv2.waitKey(1) >= 0:  # Break with ESC
+            break
 
-    if cv2.waitKey(1) >= 0:  # Break with ESC
-        break
+        # use bbox and plane to find 3D position
+        if plane_estimator.d_plane is not None:
+            loc_3d = compute_loc_3d([0,0,1,plane_estimator.d_plane], [0,1,0,-0.1], 
+                            corn_id_bbox, plane_estimator.K)
 
-    # use bbox and plane to find 3D position
-    if plane_estimator.d_plane is not None:
-        loc_3d = compute_loc_3d([0,0,1,plane_estimator.d_plane], [0,1,0,-0.1], 
-                        corn_id_bbox, plane_estimator.K)
+            merge_measurements(history, loc_3d, frame.pose, pose0)
 
-        merge_measurements(history, loc_3d, frame.pose, pose0)
-
-pickle.dump(history, open('history.pkl', 'wb'))
+    pickle.dump(history, open('history.pkl', 'wb'))

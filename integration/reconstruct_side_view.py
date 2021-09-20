@@ -40,7 +40,9 @@ parser.add_argument("-c", "--confidence", type=float, default=0.8,
 parser.add_argument("-d", "--data_dir", default="tmp/offline_frames")
 parser.add_argument('--reconstruct', type=int, default=0)
 parser.add_argument('--build_mesh', type=int, default=0)
+parser.add_argument('--step', type=int, default=10, help='stitch every k frames')
 parser.add_argument("--pcd_name", type=str, default="side_view")
+
 args = parser.parse_args()
 
 
@@ -83,33 +85,38 @@ if args.reconstruct:
     num_frames = 500
 
     for i in range(i_start, i_start+num_frames):
-        frame = pickle.load(open(os.path.join(frame_dir, 'frame_%07d.pkl'%(i)), 'rb'))
-        print('Loaded frame number %d'%i)
+        try:
+            frame = pickle.load(open(os.path.join(frame_dir, 'frame_%07d.pkl'%(i)), 'rb'))
+            print('Loaded frame number %d'%i)
 
-        # merge pointcloud every 5 frames
-        if (i-i_start) % 20 == 0:
-            points, depth_mask = side_pcd.depth_to_points(frame.side_depth, plane_estimator.K)
+        except:
+            frame = None
 
-            # color thresholding
-            color = frame.side_color
-            ratio1, ratio2 = color[:,:,1] / color[:,:,0] , color[:,:,2] / color[:,:,0] 
-            color_mask = (color[:,:,0]<60) & (ratio1>0.9) & (ratio1<1.1) & (ratio2>0.9) & (ratio2<1.1)
+        if frame:
+            # merge pointcloud every 5 frames
+            if (i-i_start) % args.step == 0:
+                points, depth_mask = side_pcd.depth_to_points(frame.side_depth, plane_estimator.K)
 
-            mask = depth_mask & (~color_mask.reshape(-1))
+                # color thresholding
+                color = frame.side_color
+                ratio1, ratio2 = color[:,:,1] / color[:,:,0] , color[:,:,2] / color[:,:,0] 
+                color_mask = (color[:,:,0]<60) & (ratio1>0.9) & (ratio1<1.1) & (ratio2>0.9) & (ratio2<1.1)
 
-            side_pcd.merge(points[mask], frame.side_color.reshape(-1,3)[mask], frame.pose)
-            o3d.io.write_point_cloud(pcd_fname, side_pcd.point_cloud)
+                mask = depth_mask & (~color_mask.reshape(-1))
+
+                side_pcd.merge(points[mask], frame.side_color.reshape(-1,3)[mask], frame.pose)
+                o3d.io.write_point_cloud(pcd_fname, side_pcd.point_cloud)
 
 
     cam_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.15)
     pcd = o3d.io.read_point_cloud(pcd_fname)
     o3d.visualization.draw_geometries([pcd, cam_frame])
     
-    pcd.rotate(pcd.get_rotation_matrix_from_zyx(np.array([0, 0.09,0])), center=[0,0,0])
-    pcd = pcd.crop(o3d.geometry.AxisAlignedBoundingBox(np.array([-100, -100, 0]), 
-                                                       np.array([100, 100, 0.49])))
-    pcd.rotate(pcd.get_rotation_matrix_from_zyx(np.array([0, -0.09,0])), center=[0,0,0])
-    o3d.visualization.draw_geometries([pcd, cam_frame])
+    # pcd.rotate(pcd.get_rotation_matrix_from_zyx(np.array([0, 0.09,0])), center=[0,0,0])
+    # pcd = pcd.crop(o3d.geometry.AxisAlignedBoundingBox(np.array([-100, -100, 0]), 
+    #                                                    np.array([100, 100, 0.49])))
+    # pcd.rotate(pcd.get_rotation_matrix_from_zyx(np.array([0, -0.09,0])), center=[0,0,0])
+    # o3d.visualization.draw_geometries([pcd, cam_frame])
     o3d.io.write_point_cloud(pcd_fname, pcd)
 
 if args.build_mesh:

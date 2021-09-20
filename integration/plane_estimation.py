@@ -5,6 +5,8 @@ import open3d as o3d
 from scipy.spatial.transform import Rotation as R
 import torch
 import torchvision.transforms as Transforms
+import matplotlib.pyplot as plt
+plt.ion()
 
 class PlaneEstimator():
     def __init__(self, args, rcnn_model):
@@ -29,7 +31,7 @@ class PlaneEstimator():
         self.rays = np.dot(np.insert(points, 2, 1, axis=1), np.linalg.inv(self.K).T).reshape(self.im_h, self.im_w, 3)
         # intrinsic matrix for realsense d435 480 x 848
 
-        self.d_plane = None
+        self.d_plane = -0.5
 
     def get_rel_trans(self, pose1, pose2):
         '''
@@ -121,7 +123,7 @@ class PlaneEstimator():
         X1 = np.insert(kp1, 2, 1, axis=1).T             # 3 x N
         L = E @ X1 / (F @ X1)                           # 3 x N
         
-        num_ft, num_choice = kp1.shape[0], 8
+        num_ft, num_choice = kp1.shape[0], 3
         max_inlier = 0
         d_result = 0
         if num_choice >= num_ft:
@@ -199,6 +201,26 @@ class PlaneEstimator():
 
         return R, d
 
+    def draw_matches(self, color_1, color_2, kp1, kp2, src_pts, dst_pts):
+        img1 = cv2.drawKeypoints(color_1, kp1, None, color=(255,0,0), flags=0)
+        img2 = cv2.drawKeypoints(color_2, kp2, None, color=(255,0,0), flags=0)
+
+        canvas = 255 * np.ones([480, 848*2+20, 3], dtype='uint8')
+        canvas[:,:848,:] = img1
+        canvas[:,-848:,:] = img2
+
+        # visualize matched pairs
+        N = src_pts.shape[0]
+        cmap = plt.cm.get_cmap('Spectral')
+        colors = [cmap(i)    for i in np.linspace(0, 1, N)]
+        for i in range(N):
+            pt1 = (int(src_pts[i,0]), int(src_pts[i,1]))
+            pt2 = (int(dst_pts[i,0]+848+20), int(dst_pts[i,1]))
+            color = (int(colors[i][0]*255), int(colors[i][1]*255), int(colors[i][2]*255))
+            canvas = cv2.line(canvas, pt1, pt2, color, 3)
+        plt.imshow(canvas)
+        plt.pause(0.01)
+
     def process_frames(self, frame1, frame2):
         '''
         process two frames to compute corn plane equation
@@ -224,7 +246,7 @@ class PlaneEstimator():
                 good.append([m])
 
         d_plane = 0
-        if len(good) > 5:
+        if len(good) > 4:
             src_pts = np.float32([ kp1[m[0].queryIdx].pt for m in good ]).reshape(-1,2)
             dst_pts = np.float32([ kp2[m[0].trainIdx].pt for m in good ]).reshape(-1,2)  
 
@@ -232,8 +254,10 @@ class PlaneEstimator():
             front_xyzrgb = np.concatenate([points, frame1.front_color], axis=2)
             R_ground, d_ground = self.find_ground_plane(front_xyzrgb)
             ground_normal = R_ground[2]
-
-            d_plane = self.estimate_distance_ransac(src_pts, dst_pts, rel_trans, ground_normal, 5, 10)
+            
+            self.draw_matches(frame1.side_color, frame2.side_color, kp1, kp2, src_pts, dst_pts)
+            
+            d_plane = self.estimate_distance_ransac(src_pts, dst_pts, rel_trans, ground_normal, 10, 30)
 
         return d_plane
 
@@ -265,6 +289,7 @@ class PlaneEstimator():
         if dmax > 0.04:
             frame1, frame2 = self.frame_buffer[0], self.frame_buffer[-1]
             d_plane = self.process_frames(frame1, frame2)
-            if d_plane < 0:
+            print('\n', self.d_plane)
+            if d_plane < -0.4 and d_plane > -0.6:
                 print("Baseline %8.2fcm, updated plane distance to be %8.2fcm "%(dmax*100, -d_plane*100))
                 self.d_plane = d_plane
