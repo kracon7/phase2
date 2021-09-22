@@ -218,8 +218,8 @@ class PlaneEstimator():
             pt2 = (int(dst_pts[i,0]+848+20), int(dst_pts[i,1]))
             color = (int(colors[i][0]*255), int(colors[i][1]*255), int(colors[i][2]*255))
             canvas = cv2.line(canvas, pt1, pt2, color, 3)
-        plt.imshow(canvas)
-        plt.pause(0.01)
+        # plt.imshow(canvas)
+        # plt.pause(0.01)
 
     def process_frames(self, frame1, frame2):
         '''
@@ -290,6 +290,6 @@ class PlaneEstimator():
             frame1, frame2 = self.frame_buffer[0], self.frame_buffer[-1]
             d_plane = self.process_frames(frame1, frame2)
             print('\n', self.d_plane)
-            if d_plane < -0.4 and d_plane > -0.6:
+            if d_plane < -0.4 and d_plane > -0.65:
                 print("Baseline %8.2fcm, updated plane distance to be %8.2fcm "%(dmax*100, -d_plane*100))
                 self.d_plane = d_plane

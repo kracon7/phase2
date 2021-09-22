@@ -112,11 +112,11 @@ if args.reconstruct:
     pcd = o3d.io.read_point_cloud(pcd_fname)
     o3d.visualization.draw_geometries([pcd, cam_frame])
     
-    # pcd.rotate(pcd.get_rotation_matrix_from_zyx(np.array([0, 0.09,0])), center=[0,0,0])
-    # pcd = pcd.crop(o3d.geometry.AxisAlignedBoundingBox(np.array([-100, -100, 0]), 
-    #                                                    np.array([100, 100, 0.49])))
-    # pcd.rotate(pcd.get_rotation_matrix_from_zyx(np.array([0, -0.09,0])), center=[0,0,0])
-    # o3d.visualization.draw_geometries([pcd, cam_frame])
+    pcd.rotate(pcd.get_rotation_matrix_from_zyx(np.array([0, 0.09,0])), center=[0,0,0])
+    pcd = pcd.crop(o3d.geometry.AxisAlignedBoundingBox(np.array([-100, -100, 0]), 
+                                                       np.array([100, 100, 0.49])))
+    pcd.rotate(pcd.get_rotation_matrix_from_zyx(np.array([0, -0.09,0])), center=[0,0,0])
+    o3d.visualization.draw_geometries([pcd, cam_frame])
     o3d.io.write_point_cloud(pcd_fname, pcd)
 
 if args.build_mesh:

@@ -51,37 +51,22 @@ mesh = [pcd]
 
 all_pos = []
 for idx in history.keys():
-    if len(history[idx]) > 6:
+    if len(history[idx]) > 10:
         all_pos.append(np.mean(np.stack(history[idx]), axis=0))
 all_pos = np.stack(all_pos)
 
 sorted_idx = np.argsort(all_pos[:,0])
-N = all_pos.shape[0]
-removed = np.array([0, 2, 4, 5, 6, 11, 13,14,15, 17,18,19,20,21,22,23, 25,26,27,28,
-                    33,34, 37, 38, 39, 40, 41, 42, 43, 44, 45])
-print(all_pos[sorted_idx[removed]], all_pos[sorted_idx])
-sorted_idx = np.array([sorted_idx[i] for i in range(N) if i not in removed])
+sorted_idx = np.array([sorted_idx[i] for i in [0, 2, 5,7, 10, 11, 12, 13, 14, 15, 16, 17]])
 
 for i in range(sorted_idx.shape[0]):
     pos = all_pos[sorted_idx[i]]
-    pos[1] = -i * 0.002  -0.1
+    pos[1] = -i * 0.005  -0.1
+
     cyld_0 = o3d.geometry.TriangleMesh.create_cylinder(radius=0.01, height=0.4)
     cyld_0.rotate(cyld_0.get_rotation_matrix_from_xzy(np.array([pi/2,0,0])), center=[0,0,0])
     cyld_0.translate(pos, relative=True)
     cyld_0.paint_uniform_color([1,0,0])
+
     mesh.append(copy.deepcopy(cyld_0))
+
 o3d.visualization.draw_geometries(mesh)
-
-
-# for i in range(all_pos.shape[0]):
-#     pos = all_pos[i]
-#     pos[1] = -i * 0.002  -0.1
-
-#     cyld_0 = o3d.geometry.TriangleMesh.create_cylinder(radius=0.01, height=0.4)
-#     cyld_0.rotate(cyld_0.get_rotation_matrix_from_xzy(np.array([pi/2,0,0])), center=[0,0,0])
-#     cyld_0.translate(pos, relative=True)
-#     cyld_0.paint_uniform_color([1,0,0])
-
-#     mesh.append(copy.deepcopy(cyld_0))
-
-# o3d.visualization.draw_geometries(mesh)

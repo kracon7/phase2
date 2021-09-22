@@ -82,42 +82,6 @@ def image_to_numpy(msg):
         data = data[...,0]
     return data
 
-
-# def main(args):
-
-#     if args.msg_type == 'color':
-#         # create output dirs
-#         color_dir = os.path.join(args.output_dir, 'color')
-#         os.system('mkdir -p {}'.format(color_dir))
-#     elif args.msg_type == 'depth':
-#         depth_dir = os.path.join(args.output_dir, 'depth')
-#         os.system('mkdir -p {}'.format(depth_dir))
-    
-#     # plt.ion()
-#     # fig, ax = plt.subplots(2,1)
-    
-#     rospy.init_node('iamge_collection')
-#     rospy.loginfo("testing virtual env")
-#     rate=rospy.Rate(10)
-
-#     count = 0
-#     while True:
-#         # get robot image data from ROS and convert to numpy array
-#         if args.msg_type == 'color':
-#             color_data = rospy.wait_for_message('/camera/color/image_raw', Image)
-#             if color_data.data:
-#                 color_image = image_to_numpy(color_data)
-#                 save_jpg(color_image, os.path.join(color_dir, 'color_%d.jpg'%(count)))
-
-#         elif args.msg_type == 'depth':
-#             depth_data = rospy.wait_for_message('/camera/depth/image_rect_raw', Image)
-        
-#             if depth_data.data:
-#                 depth_image = image_to_numpy(depth_data)
-#                 # np.save(os.path.join(depth_dir, 'depth_%d.npy'%(count)), depth_image)
-#                 # cv2.imwrite(os.path.join(depth_dir, 'depth_%d.png'%(count)), depth_image)
-#                 save_jpg(depth_image, os.path.join(depth_dir, 'depth_%d.tif'%(count)))
-
 def main():
     """Extract a folder of images from a rosbag.
     """
@@ -127,7 +91,7 @@ def main():
     parser.add_argument("--image_topic", help="Image topic.")
     parser.add_argument("--max_num", default=-1, type=int, help='Maximum number of messages to extract')
     parser.add_argument("--save_every", default=1, type=int, help="save every k frames")
-    parser.add_argument("--prefix", default='', type=str, help="file name prefix")
+    parser.add_argument("--prefix", default='', type=str, help="image name prefix")
 
     args = parser.parse_args()
 
@@ -142,17 +106,15 @@ def main():
     for topic, msg, t in bag.read_messages(topics=[args.image_topic]):
         if count % args.save_every == 0:
             cv_img = image_to_numpy(msg)
-            # cv_img = bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
+            print("Writing image %i" % count)
             cv2.imwrite(os.path.join(args.output_dir, args.prefix+"frame%07i.png"%count), cv2.cvtColor(cv_img, cv2.COLOR_RGB2BGR))
-            print("Wrote image %i" % count)
 
-        count += 1
+            count += 1
 
         if args.max_num > 0 and count > args.max_num:
             break
 
     bag.close()
-
 
 if __name__ == '__main__':
     main()
