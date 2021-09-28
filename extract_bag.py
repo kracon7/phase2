@@ -107,7 +107,9 @@ def main():
         if count % args.save_every == 0:
             cv_img = image_to_numpy(msg)
             print("Writing image %i" % count)
-            cv2.imwrite(os.path.join(args.output_dir, args.prefix+"frame%07i.png"%count), cv2.cvtColor(cv_img, cv2.COLOR_RGB2BGR))
+            if cv_img.dtype == 'uint8':
+                cv_img = cv2.cvtColor(cv_img, cv2.COLOR_RGB2BGR)
+            cv2.imwrite(os.path.join(args.output_dir, args.prefix+"frame%07i.png"%count), cv_img)
 
             count += 1
 
